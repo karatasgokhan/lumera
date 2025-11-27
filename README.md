@@ -1,47 +1,71 @@
-# Lumera - Takı E-Ticaret ve Stok Takip Sistemi
+# Lumera - Jewelry E-Commerce and Inventory Management System
 
-Lumera takı firması için geliştirilmiş modern e-ticaret ve stok takip platformu.
+A modern e-commerce and inventory management platform developed for Lumera jewelry company.
 
-## Özellikler
+## Features
 
-- 🛍️ E-ticaret platformu
-- 📦 Stok takip ve yönetim sistemi
-- 👤 Kullanıcı yönetimi ve kimlik doğrulama
-- 🛒 Sepet ve sipariş yönetimi
-- 📊 Admin paneli
-- 📱 Responsive tasarım
+- 🛍️ E-commerce platform
+- 📦 Inventory tracking and management system
+- 👤 User management and authentication
+- 🛒 Shopping cart and order management
+- 📊 Admin panel
+- 📱 Responsive design
 
-## Teknolojiler
+## Technologies
 
-- **Frontend/Backend**: Next.js 14
-- **Dil**: TypeScript
-- **Styling**: (CSS Modules / Tailwind CSS - eklenecek)
+- **Frontend/Backend**: Next.js 16
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: Shadcn UI
+- **Package Manager**: npm
 
-## Kurulum
+## Installation
 
 ```bash
-# Bağımlılıkları yükle
+# Install dependencies
 npm install
 
-# Geliştirme sunucusunu başlat
+# Start development server
 npm run dev
 ```
 
-Tarayıcınızda [http://localhost:3000](http://localhost:3000) adresini açın.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Proje Yapısı
+## Project Structure
 
 ```
 lumera/
-├── app/              # Next.js App Router sayfaları
-├── components/       # React bileşenleri
-├── lib/             # Yardımcı fonksiyonlar ve utilities
-├── types/           # TypeScript tip tanımları
-├── public/          # Statik dosyalar
-└── styles/          # CSS dosyaları
+├── app/              # Next.js App Router pages
+├── components/       # React components
+│   └── ui/          # Shadcn UI components
+├── lib/             # Utility functions and helpers
+├── types/           # TypeScript type definitions
+├── public/          # Static files
+└── styles/          # CSS files
 ```
 
-## Geliştirme
+## Development
 
-Proje aktif geliştirme aşamasındadır.
+The project is currently under active development.
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+
+## Adding Shadcn UI Components
+
+To add Shadcn UI components to your project:
+
+```bash
+npx shadcn@latest add [component-name]
+```
+
+Example:
+```bash
+npx shadcn@latest add button
+npx shadcn@latest add card
+```
 
