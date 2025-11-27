@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "directus": {
+      "url": "https://lumerastudio.com.tr/mcp",
+      "headers": {
+        "Authorization": "Bearer _6tBv72KeozH9phVJJbjzj-bpWguF3Q1"
+      }
+    }
+  }
+}
