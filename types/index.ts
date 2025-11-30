@@ -42,6 +42,9 @@ export interface Product {
 export interface Schema {
   products: Product[];
   categories: Category[];
+  sales: Sale[];
+  sale_items: SaleItem[];
+  stock_movements: StockMovement[];
 }
 
 // Cart item type
@@ -69,13 +72,46 @@ export interface User {
   createdAt: Date;
 }
 
-// Stock movement type
+// Sale type matching Directus schema
+export interface Sale {
+  id: string;
+  sale_date: string; // ISO date string
+  sale_type: "online" | "counter"; // online or tezgah
+  total_amount: number; // Decimal
+  total_cost: number; // Decimal
+  total_profit: number; // Decimal (total_amount - total_cost)
+  notes?: string | null;
+  sale_items?: SaleItem[] | null; // One-to-Many relation
+  date_created?: string;
+  date_updated?: string;
+  user_created?: string;
+  user_updated?: string;
+}
+
+// Sale Item type matching Directus schema
+export interface SaleItem {
+  id: string;
+  sale: string | Sale; // Many-to-One: Sales
+  product: string | Product; // Many-to-One: Products
+  quantity: number; // Integer
+  unit_price: number; // Decimal - Sales price at time of sale
+  unit_cost: number; // Decimal - Cost price at time of sale
+  subtotal: number; // Decimal (quantity * unit_price)
+  cost_total: number; // Decimal (quantity * unit_cost)
+  profit: number; // Decimal (subtotal - cost_total)
+  date_created?: string;
+  user_created?: string;
+}
+
+// Stock movement type matching Directus schema
 export interface StockMovement {
   id: string;
-  productId: string;
-  type: "in" | "out" | "adjustment";
-  quantity: number;
-  reason: string;
-  createdAt: Date;
-  createdBy: string;
+  product: string | Product; // Many-to-One: Products
+  movement_type: "in" | "out" | "adjustment";
+  quantity: number; // Integer (positive for in, negative for out)
+  reason: string; // e.g., "Satış", "Stok Girişi", "Düzeltme"
+  related_sale?: string | Sale | null; // Many-to-One: Sales (optional)
+  notes?: string | null;
+  date_created?: string;
+  user_created?: string;
 }

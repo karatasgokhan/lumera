@@ -1,32 +1,16 @@
 import Link from "next/link";
-import { readItems } from "@directus/sdk";
-import { directus } from "@/lib/directus";
+import { getCategories } from "@/lib/directus";
 import type { Category } from "@/types";
 
-async function getCategories(): Promise<Category[]> {
-  try {
-    const categories = await directus.request(
-      readItems("categories", {
-        fields: ["id", "name", "slug"],
-        sort: ["name"],
-      })
-    );
-    return categories as Category[];
-  } catch (error) {
-    console.error("Error fetching categories:", error);
-    if (error instanceof Error) {
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
-    }
-    if (error && typeof error === "object" && "extensions" in error) {
-      console.error("Directus error extensions:", error.extensions);
-    }
-    return [];
-  }
-}
-
 export default async function Navbar() {
-  const categories = await getCategories();
+  // Silently handle errors - if categories fail to load, just show empty array
+  let categories: Category[] = [];
+  try {
+    categories = await getCategories();
+  } catch (error) {
+    // Silently fail - Navbar should still render even if categories fail
+    categories = [];
+  }
 
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -42,6 +26,12 @@ export default async function Navbar() {
           {/* Category Links */}
           {categories.length > 0 && (
             <div className="flex flex-wrap items-center justify-center gap-6">
+              <Link
+                href="/"
+                className="font-sans text-sm font-light uppercase tracking-wider text-gray-700 transition-colors hover:text-black"
+              >
+                Ana Sayfa
+              </Link>
               {categories.map((category) => (
                 <Link
                   key={category.id}
@@ -51,6 +41,28 @@ export default async function Navbar() {
                   {category.name}
                 </Link>
               ))}
+              <Link
+                href="/admin"
+                className="font-sans text-sm font-light uppercase tracking-wider text-gray-700 transition-colors hover:text-black border-l border-gray-300 pl-6"
+              >
+                Admin
+              </Link>
+            </div>
+          )}
+          {categories.length === 0 && (
+            <div className="flex items-center justify-center gap-6">
+              <Link
+                href="/"
+                className="font-sans text-sm font-light uppercase tracking-wider text-gray-700 transition-colors hover:text-black"
+              >
+                Ana Sayfa
+              </Link>
+              <Link
+                href="/admin"
+                className="font-sans text-sm font-light uppercase tracking-wider text-gray-700 transition-colors hover:text-black border-l border-gray-300 pl-6"
+              >
+                Admin
+              </Link>
             </div>
           )}
         </div>

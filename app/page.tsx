@@ -1,35 +1,9 @@
-import { Suspense } from "react";
-import { readItems } from "@directus/sdk";
-import { directus } from "@/lib/directus";
-import Navbar from "@/components/Navbar";
 import ProductCard from "@/components/ProductCard";
 import type { Product } from "@/types";
 
 async function getProducts(): Promise<Product[]> {
-  try {
-    const products = await directus.request(
-      readItems("products", {
-        fields: ["*"],
-        filter: {
-          is_active: {
-            _eq: true,
-          },
-        },
-        sort: ["-date_created"],
-      })
-    );
-    return products as Product[];
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    if (error instanceof Error) {
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
-    }
-    if (error && typeof error === "object" && "extensions" in error) {
-      console.error("Directus error extensions:", error.extensions);
-    }
-    return [];
-  }
+  // Directus collections are not set up yet
+  return [];
 }
 
 export default async function Home() {
@@ -37,22 +11,6 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Suspense
-        fallback={
-          <header className="border-b border-gray-200 bg-white">
-            <nav className="container mx-auto px-4 py-6">
-              <div className="flex flex-col items-center space-y-6">
-                <h1 className="font-serif text-3xl font-light tracking-wider text-black">
-                  LUMERA
-                </h1>
-              </div>
-            </nav>
-          </header>
-        }
-      >
-        <Navbar />
-      </Suspense>
-
       <main className="container mx-auto px-4 py-12">
         {/* Hero Section */}
         <section className="mb-16 text-center">
@@ -76,9 +34,10 @@ export default async function Home() {
           </section>
         ) : (
           <div className="py-20 text-center">
-            <p className="font-sans text-gray-500">
-              No products available at the moment.
+            <p className="font-serif text-2xl font-light text-gray-700">
+              Yakında Gelecek
             </p>
+            <p className="mt-2 font-sans text-sm text-gray-500">Coming Soon</p>
           </div>
         )}
       </main>
