@@ -137,6 +137,75 @@
         />
       </div>
 
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          Ürün Görselleri
+        </label>
+        <div class="mt-2">
+          <input
+            ref="fileInput"
+            type="file"
+            multiple
+            accept="image/*"
+            @change="handleFileSelect"
+            class="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            @click="() => fileInput?.click()"
+          >
+            + Görsel Ekle
+          </Button>
+          <div
+            v-if="selectedFiles.length > 0"
+            class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4"
+          >
+            <div
+              v-for="(file, index) in selectedFiles"
+              :key="index"
+              class="relative group"
+            >
+              <img
+                :src="file.preview"
+                :alt="file.name"
+                class="w-full h-32 object-cover rounded-md border border-gray-300"
+              />
+              <button
+                type="button"
+                @click="removeFile(index)"
+                class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          <div v-if="uploadedImages.length > 0" class="mt-4">
+            <p class="text-sm text-gray-600 mb-2">Yüklenen Görseller:</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div
+                v-for="imageId in uploadedImages"
+                :key="imageId"
+                class="relative group"
+              >
+                <img
+                  :src="getImageUrl(imageId) ?? ''"
+                  alt="Product image"
+                  class="w-full h-32 object-cover rounded-md border border-gray-300"
+                />
+                <button
+                  type="button"
+                  @click="removeUploadedImage(imageId)"
+                  class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="flex items-center">
         <input
           id="is_active"
@@ -162,6 +231,7 @@
 <script setup lang="ts">
 import type { Category } from "~/types";
 import { useProducts } from "~/composables/useProducts";
+import { getImageUrl } from "~/utils";
 
 interface Props {
   categories: Category[];
@@ -170,9 +240,16 @@ interface Props {
 const props = defineProps<Props>();
 
 const { createProduct } = useProducts();
+const config = useRuntimeConfig();
 
 const isOpen = ref(false);
 const isSubmitting = ref(false);
+const fileInput = ref<HTMLInputElement | null>(null);
+const selectedFiles = ref<Array<{ file: File; preview: string; name: string }>>(
+  []
+);
+const uploadedImages = ref<string[]>([]);
+
 const formData = ref({
   name: "",
   slug: "",
@@ -200,14 +277,86 @@ const generateSlug = (name: string) => {
     .replace(/^-+|-+$/g, "");
 };
 
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  if (!target.files) return;
+
+  Array.from(target.files).forEach((file) => {
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        selectedFiles.value.push({
+          file,
+          preview: e.target?.result as string,
+          name: file.name,
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+};
+
+const removeFile = (index: number) => {
+  selectedFiles.value.splice(index, 1);
+};
+
+const removeUploadedImage = (imageId: string) => {
+  uploadedImages.value = uploadedImages.value.filter((id) => id !== imageId);
+};
+
+const uploadFiles = async (files: File[]): Promise<string[]> => {
+  const directusUrl = config.public.directusUrl;
+  if (!directusUrl) {
+    throw new Error("Directus URL yapılandırılmamış");
+  }
+
+  const uploadedIds: string[] = [];
+
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await $fetch<{ data: { id: string } }>(
+        `${directusUrl}/files`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+      uploadedIds.push(response.data.id);
+    } catch (error) {
+      console.error("Dosya yükleme hatası:", error);
+      throw error;
+    }
+  }
+
+  return uploadedIds;
+};
+
 const handleSubmit = async () => {
   isSubmitting.value = true;
 
   try {
-    await createProduct({
+    // Upload images first
+    let imageIds: string[] = [...uploadedImages.value];
+
+    if (selectedFiles.value.length > 0) {
+      const filesToUpload = selectedFiles.value.map((f) => f.file);
+      const newImageIds = await uploadFiles(filesToUpload);
+      imageIds = [...imageIds, ...newImageIds];
+    }
+
+    const productData: any = {
       ...formData.value,
       category: formData.value.category || null,
-    });
+    };
+
+    if (imageIds.length > 0) {
+      productData.images = imageIds;
+    }
+
+    await createProduct(productData);
 
     // Reset form
     formData.value = {
@@ -223,6 +372,8 @@ const handleSubmit = async () => {
       material: "",
       category: "",
     };
+    selectedFiles.value = [];
+    uploadedImages.value = [];
     isOpen.value = false;
     await navigateTo("/admin/products", { replace: true });
   } catch (error) {

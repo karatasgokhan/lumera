@@ -69,17 +69,30 @@
             v-model="singleProduct"
             required
             @change="() => handleProductSelect(singleProduct)"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+            :class="`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-black ${
+              getStockWarning(singleProduct)
+                ? 'border-red-300 bg-red-50'
+                : 'border-gray-300'
+            }`"
           >
             <option value="">Ürün Seçin</option>
             <option
               v-for="product in products"
               :key="product.id"
               :value="product.id"
+              :disabled="product.stock_quantity === 0"
             >
-              {{ product.name }} ({{ product.stock_quantity }} stok)
+              {{ product.name }}
+              ({{ product.stock_quantity }} stok)
+              <span v-if="product.stock_quantity === 0"> - STOKTA YOK</span>
             </option>
           </select>
+          <p
+            v-if="getStockWarning(singleProduct)"
+            class="mt-1 text-sm text-red-600"
+          >
+            ⚠️ Yetersiz stok! Mevcut: {{ getProductStock(singleProduct) }} adet
+          </p>
         </div>
 
         <div>
@@ -116,13 +129,30 @@
             <select
               :value="item.product"
               @change="(e: Event) => handleProductSelect((e.target as HTMLSelectElement).value, index)"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+              :class="`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-black ${
+                getStockWarning(item.product, item.quantity)
+                  ? 'border-red-300 bg-red-50'
+                  : 'border-gray-300'
+              }`"
             >
               <option value="">Seçin</option>
-              <option v-for="p in products" :key="p.id" :value="p.id">
-                {{ p.name }} ({{ p.stock_quantity }} stok)
+              <option
+                v-for="p in products"
+                :key="p.id"
+                :value="p.id"
+                :disabled="p.stock_quantity === 0"
+              >
+                {{ p.name }}
+                ({{ p.stock_quantity }} stok)
+                <span v-if="p.stock_quantity === 0"> - STOKTA YOK</span>
               </option>
             </select>
+            <p
+              v-if="getStockWarning(item.product, item.quantity)"
+              class="mt-1 text-xs text-red-600"
+            >
+              ⚠️ Yetersiz stok! Mevcut: {{ getProductStock(item.product) }} adet
+            </p>
           </div>
 
           <div>
@@ -259,6 +289,20 @@ const getProductById = (id: string) => {
   return props.products.find((p) => p.id === id);
 };
 
+const getProductStock = (productId: string): number => {
+  const product = getProductById(productId);
+  return product?.stock_quantity ?? 0;
+};
+
+const getStockWarning = (productId: string, quantity?: number): boolean => {
+  if (!productId) return false;
+  const product = getProductById(productId);
+  if (!product) return false;
+
+  const requestedQty = quantity ?? singleQuantity.value ?? 1;
+  return product.stock_quantity < requestedQty;
+};
+
 const calculateTotals = (items: SaleItem[]) => {
   const totalAmount = items.reduce(
     (sum, item) => sum + item.quantity * item.unit_price,
@@ -348,10 +392,19 @@ const handleSubmit = async () => {
         return;
       }
 
+      const qty = singleQuantity.value || 1;
+      if (product.stock_quantity < qty) {
+        alert(
+          `Yetersiz stok! ${product.name} için mevcut stok: ${product.stock_quantity} adet`
+        );
+        isSubmitting.value = false;
+        return;
+      }
+
       items = [
         {
           product: singleProduct.value,
-          quantity: singleQuantity.value || 1,
+          quantity: qty,
           unit_price: product.discount_price ?? product.price ?? 0,
           unit_cost: product.cost_price ?? 0,
         },
@@ -362,6 +415,23 @@ const handleSubmit = async () => {
         alert("Lütfen en az bir ürün ekleyin");
         isSubmitting.value = false;
         return;
+      }
+
+      // Validate stock for batch items
+      for (const item of items) {
+        const product = getProductById(item.product);
+        if (!product) {
+          alert(`Ürün bulunamadı: ${item.product}`);
+          isSubmitting.value = false;
+          return;
+        }
+        if (product.stock_quantity < item.quantity) {
+          alert(
+            `Yetersiz stok! ${product.name} için mevcut stok: ${product.stock_quantity} adet, istenen: ${item.quantity} adet`
+          );
+          isSubmitting.value = false;
+          return;
+        }
       }
     }
 
