@@ -61,11 +61,22 @@ import type { Category } from "~/types";
 
 const { getCategories } = useCategories();
 
-let categories: Category[] = [];
-try {
-  categories = await getCategories();
-} catch (error) {
-  // Silently fail - Navbar should still render even if categories fail
-  categories = [];
-}
+// Use useAsyncData for SSR, but also fetch directly on client
+const { data: categories } = await useAsyncData<Category[]>(
+  "navbar-categories",
+  () => getCategories(),
+  {
+    default: () => [],
+    server: true,
+    lazy: false,
+  }
+);
+
+// Always fetch directly on mount (client-side navigation)
+onMounted(async () => {
+  if (process.client) {
+    // Direct API call to ensure network request is made
+    categories.value = await getCategories();
+  }
+});
 </script>

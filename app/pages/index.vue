@@ -158,18 +158,82 @@ const { getSales, getDailyReport } = useSales();
 const today =
   new Date().toISOString().split("T")[0] ??
   new Date().toISOString().substring(0, 10);
-const products = await getProducts();
-const todayReport = await getDailyReport(today);
-const recentSales = await getSales(undefined, { limit: 5 });
 
-const stats = {
-  totalProducts: products.length,
-  activeProducts: products.filter((p) => p.is_active).length,
-  todaySales: todayReport.sales_count,
-  todayRevenue: todayReport.total_amount,
-  todayProfit: todayReport.total_profit,
-  recentSales,
-};
+// Use useAsyncData for SSR, but also fetch directly on client
+const { data: products } = await useAsyncData<{
+  data: Product[];
+  total?: number;
+}>("dashboard-products", () => getProducts(), {
+  default: () => ({ data: [] }),
+  server: true,
+  lazy: false,
+});
+
+const { data: todayReport } = await useAsyncData(
+  "dashboard-today-report",
+  () => getDailyReport(today),
+  {
+    default: () => ({
+      sales_count: 0,
+      total_amount: 0,
+      total_profit: 0,
+    }),
+    server: true,
+    lazy: false,
+  }
+);
+
+const { data: recentSales } = await useAsyncData<{
+  data: Sale[];
+  total?: number;
+}>("dashboard-recent-sales", () => getSales(undefined, { limit: 5 }), {
+  default: () => ({ data: [] }),
+  server: true,
+  lazy: false,
+});
+
+// Always fetch directly on mount (client-side navigation)
+onMounted(async () => {
+  if (process.client) {
+    // Direct API calls to ensure network requests are made
+    const [productsResult, todayReportData, recentSalesResult] =
+      await Promise.all([
+        getProducts(),
+        getDailyReport(today),
+        getSales(undefined, { limit: 5 }),
+      ]);
+    products.value = productsResult;
+    todayReport.value = todayReportData;
+    recentSales.value = recentSalesResult;
+  }
+});
+
+const stats = computed(() => {
+  const productsData = products.value?.data || [];
+  const recentSalesData = recentSales.value?.data || [];
+
+  // Safely extract numeric values, handling null, undefined, and NaN
+  const safeTotalAmount = todayReport.value?.total_amount;
+  const todayRevenue =
+    safeTotalAmount == null || isNaN(Number(safeTotalAmount))
+      ? 0
+      : Number(safeTotalAmount);
+
+  const safeTotalProfit = todayReport.value?.total_profit;
+  const todayProfit =
+    safeTotalProfit == null || isNaN(Number(safeTotalProfit))
+      ? 0
+      : Number(safeTotalProfit);
+
+  return {
+    totalProducts: products.value?.total || productsData.length || 0,
+    activeProducts: productsData.filter((p) => p.is_active).length || 0,
+    todaySales: todayReport.value?.sales_count || 0,
+    todayRevenue,
+    todayProfit,
+    recentSales: recentSalesData,
+  };
+});
 
 useSeoMeta({
   title: "Dashboard - Lumera",

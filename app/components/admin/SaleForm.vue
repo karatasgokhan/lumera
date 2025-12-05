@@ -259,6 +259,7 @@
 import type { Product } from "~/types";
 import { formatPrice } from "~/utils";
 import { useProducts } from "~/composables/useProducts";
+import Button from "~/components/ui/Button.vue";
 
 interface Props {
   products: Product[];
@@ -455,7 +456,12 @@ const handleSubmit = async () => {
     singleQuantity.value = 1;
     batchItems.value = [];
     notes.value = "";
-    await navigateTo("/admin/sales", { replace: true });
+
+    // Show success message
+    alert("Satış başarıyla oluşturuldu!");
+
+    // Navigate to sales page - the page will refresh data on mount
+    await navigateTo("/admin/sales");
   } catch (error) {
     console.error("Error creating sale:", error);
     alert("Satış oluşturulurken bir hata oluştu");

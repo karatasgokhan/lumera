@@ -3,11 +3,18 @@ export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
   devtools: { enabled: true },
 
-  modules: ["@nuxtjs/tailwindcss"],
-
   css: ["~/assets/css/main.css"],
 
+  postcss: {
+    plugins: {
+      tailwindcss: {},
+      autoprefixer: {},
+    },
+  },
+
   runtimeConfig: {
+    // Server-side only (private)
+    directusStaticToken: process.env.DIRECTUS_STATIC_TOKEN || "",
     public: {
       directusUrl:
         process.env.NUXT_PUBLIC_DIRECTUS_URL ||

@@ -10,10 +10,30 @@ export const useSales = () => {
     sale_type: "online" | "counter";
     notes?: string;
   }): Promise<Sale> => {
-    const sale = await client.request(
-      createItem("sales" as any, saleData as any)
+    // Explicitly specify fields to avoid alias field issues (like stock_movements)
+    const explicitFields = [
+      "id",
+      "sale_date",
+      "sale_type",
+      "total_amount",
+      "total_cost",
+      "total_profit",
+      "notes",
+      "user_created",
+      "date_created",
+      "user_updated",
+      "date_updated",
+    ];
+    const createdSale = await client.request(
+      createItem(
+        "sales" as any,
+        saleData as any,
+        {
+          fields: explicitFields,
+        } as any
+      )
     );
-    return sale as unknown as Sale;
+    return createdSale as unknown as Sale;
   };
 
   const createSaleItems = async (
@@ -25,7 +45,16 @@ export const useSales = () => {
       unit_cost: number;
     }>
   ): Promise<SaleItem[]> => {
-    const saleItems = items.map((item) => ({
+    // Ensure all values are numbers
+    const normalizedItems = items.map((item) => ({
+      product: item.product,
+      quantity: Number(item.quantity) || 0,
+      unit_price: Number(item.unit_price) || 0,
+      unit_cost: Number(item.unit_cost) || 0,
+    }));
+
+    // Create sale items (computed fields like subtotal, cost_total, profit are readonly and calculated by Directus)
+    const saleItems = normalizedItems.map((item) => ({
       sale: saleId,
       product: item.product,
       quantity: item.quantity,
@@ -39,26 +68,141 @@ export const useSales = () => {
       )
     )) as unknown as SaleItem[];
 
-    const totalAmount = items.reduce(
+    // Update sale items with calculated fields (if they're not computed by Directus)
+    // Try to update computed fields - if they're truly readonly, this will fail silently
+    try {
+      await Promise.all(
+        createdItems.map(async (createdItem, index) => {
+          const item = normalizedItems[index];
+          if (!item || !createdItem.id) return;
+
+          const subtotal = item.quantity * item.unit_price;
+          const costTotal = item.quantity * item.unit_cost;
+          const profit = subtotal - costTotal;
+
+          try {
+            await client.request(
+              updateItem("sale_items" as any, createdItem.id, {
+                subtotal: subtotal.toFixed(2),
+                cost_total: costTotal.toFixed(2),
+                profit: profit.toFixed(2),
+              } as any)
+            );
+          } catch (updateError) {
+            // If fields are readonly/computed, this is expected - Directus will calculate them
+            if (process.env.NODE_ENV === "development") {
+              console.log(
+                `Sale item ${createdItem.id} computed fields may be readonly:`,
+                updateError
+              );
+            }
+          }
+        })
+      );
+    } catch (error) {
+      // Ignore errors - computed fields might be handled by Directus
+      if (process.env.NODE_ENV === "development") {
+        console.log("Could not update sale item computed fields:", error);
+      }
+    }
+
+    // Calculate totals from normalized items
+    const totalAmount = normalizedItems.reduce(
       (sum, item) => sum + item.quantity * item.unit_price,
       0
     );
-    const totalCost = items.reduce(
+    const totalCost = normalizedItems.reduce(
       (sum, item) => sum + item.quantity * item.unit_cost,
       0
     );
     const totalProfit = totalAmount - totalCost;
 
+    // Update sale totals - explicitly specify fields to avoid alias field issues
+    const explicitFields = [
+      "id",
+      "sale_date",
+      "sale_type",
+      "total_amount",
+      "total_cost",
+      "total_profit",
+      "notes",
+      "user_created",
+      "date_created",
+      "user_updated",
+      "date_updated",
+    ];
+
+    // Try updating sale totals - try as numbers first (Directus decimal fields prefer numbers)
     try {
-      await client.request(
-        updateItem("sales" as any, saleId, {
-          total_amount: totalAmount,
-          total_cost: totalCost,
-          total_profit: totalProfit,
-        } as any)
+      const updateResult = await client.request(
+        updateItem(
+          "sales" as any,
+          saleId,
+          {
+            total_amount: totalAmount,
+            total_cost: totalCost,
+            total_profit: totalProfit,
+          } as any,
+          {
+            fields: explicitFields,
+          } as any
+        )
       );
-    } catch (error) {
-      console.warn("Could not update sale totals (may be readonly):", error);
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("✅ Sale totals updated:", {
+          saleId,
+          totalAmount,
+          totalCost,
+          totalProfit,
+          updateResult,
+        });
+      }
+    } catch (error: any) {
+      // If that fails, try as strings
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          "⚠️ Failed to update as numbers, trying as strings...",
+          error
+        );
+      }
+      try {
+        const stringUpdateResult = await client.request(
+          updateItem(
+            "sales" as any,
+            saleId,
+            {
+              total_amount: totalAmount.toFixed(2),
+              total_cost: totalCost.toFixed(2),
+              total_profit: totalProfit.toFixed(2),
+            } as any,
+            {
+              fields: explicitFields,
+            } as any
+          )
+        );
+        if (process.env.NODE_ENV === "development") {
+          console.log("✅ Sale totals updated as strings:", {
+            saleId,
+            totalAmount,
+            totalCost,
+            totalProfit,
+            stringUpdateResult,
+          });
+        }
+      } catch (retryError: any) {
+        // Log error but don't throw - sale items are already created
+        // The server-side endpoint will handle updating totals
+        console.error("❌ Failed to update sale totals in createSaleItems:", {
+          saleId,
+          totalAmount,
+          totalCost,
+          totalProfit,
+          error: retryError?.message || retryError,
+        });
+        // Note: The server-side endpoint (sales.post.ts) will handle updating totals
+        // So we don't throw here to avoid breaking the sale creation
+      }
     }
 
     return createdItems;
@@ -66,45 +210,212 @@ export const useSales = () => {
 
   const getSales = async (
     filters?: any,
-    options?: { limit?: number }
-  ): Promise<Sale[]> => {
-    return handleDirectusRequest(
-      async () => {
-        const query: any = {
-          fields: ["*"],
-          sort: ["-sale_date", "-date_created"],
+    options?: { limit?: number; offset?: number }
+  ): Promise<{ data: Sale[]; total?: number }> => {
+    // On client, use server API route to avoid CORS
+    if (process.client) {
+      try {
+        // Use explicit fields including sale_items and product info
+        const explicitFields = [
+          "id",
+          "sale_date",
+          "sale_type",
+          "total_amount",
+          "total_cost",
+          "total_profit",
+          "notes",
+          "user_created",
+          "date_created",
+          "user_updated",
+          "date_updated",
+          "sale_items.id",
+          "sale_items.quantity",
+          "sale_items.unit_price",
+          "sale_items.unit_cost",
+          "sale_items.product.id",
+          "sale_items.product.name",
+        ];
+        const queryParams: Record<string, string> = {
+          fields: JSON.stringify(explicitFields),
+          sort: JSON.stringify(["-sale_date", "-date_created"]),
         };
 
+        // Handle filters
         if (filters) {
-          if (filters.limit !== undefined) {
-            query.limit = filters.limit;
-            const { limit, ...filterParams } = filters;
-            if (Object.keys(filterParams).length > 0) {
-              query.filter = filterParams;
-            }
-          } else {
-            query.filter = filters;
+          // Remove limit from filters if it exists (limit should be in options, not filters)
+          const { limit: filterLimit, ...filterParams } = filters;
+          if (Object.keys(filterParams).length > 0) {
+            queryParams.filter = JSON.stringify(filterParams);
+          }
+          // If limit was in filters, use it (backward compatibility)
+          if (filterLimit !== undefined && options?.limit === undefined) {
+            queryParams.limit = filterLimit.toString();
           }
         }
 
+        // Handle options (preferred way to pass limit and offset)
+        if (options?.limit !== undefined) {
+          queryParams.limit = options.limit.toString();
+        }
+
+        if (options?.offset !== undefined) {
+          queryParams.offset = options.offset.toString();
+        }
+
+        const response = await $fetch<
+          { data: Sale[]; meta: { total_count: number } } | Sale[]
+        >("/api/sales", { query: queryParams });
+
+        let data: Sale[];
+        let total: number | undefined;
+
+        if (Array.isArray(response)) {
+          data = response;
+          total = undefined;
+        } else if (response && typeof response === "object") {
+          const result = response as any;
+          data = (result.data || result) as Sale[];
+          total = result.meta?.total_count;
+        } else {
+          data = [];
+          total = undefined;
+        }
+
+        return {
+          data: Array.isArray(data) ? data : [],
+          total: total,
+        };
+      } catch (error: any) {
+        console.error("Failed to fetch sales via API:", error);
+        return { data: [], total: 0 };
+      }
+    }
+
+    // On server, use direct Directus call
+    return handleDirectusRequest(
+      async () => {
+        // Use explicit fields including sale_items and product info
+        const explicitFields = [
+          "id",
+          "sale_date",
+          "sale_type",
+          "total_amount",
+          "total_cost",
+          "total_profit",
+          "notes",
+          "user_created",
+          "date_created",
+          "user_updated",
+          "date_updated",
+          "sale_items.id",
+          "sale_items.quantity",
+          "sale_items.unit_price",
+          "sale_items.unit_cost",
+          "sale_items.product.id",
+          "sale_items.product.name",
+        ];
+        const query: any = {
+          fields: explicitFields,
+          sort: ["-sale_date", "-date_created"],
+        };
+
+        // Handle filters
+        if (filters) {
+          // Remove limit from filters if it exists (limit should be in options, not filters)
+          const { limit: filterLimit, ...filterParams } = filters;
+          if (Object.keys(filterParams).length > 0) {
+            query.filter = filterParams;
+          }
+          // If limit was in filters, use it (backward compatibility)
+          if (filterLimit !== undefined && options?.limit === undefined) {
+            query.limit = filterLimit;
+          }
+        }
+
+        // Handle options (preferred way to pass limit and offset)
         if (options?.limit !== undefined) {
           query.limit = options.limit;
         }
 
-        return (await client.request(
-          readItems("sales" as any, query)
-        )) as unknown as Sale[];
+        if (options?.offset !== undefined) {
+          query.offset = options.offset;
+        }
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("📦 Fetching sales from Directus...", { query });
+        }
+
+        const response = await client.request(readItems("sales" as any, query));
+
+        // Directus returns { data: [...], meta: { total_count: ... } } when meta is requested
+        // Or just [...] when meta is not requested
+        let data: Sale[];
+        let total: number | undefined;
+
+        if (Array.isArray(response)) {
+          // Response is directly an array (no meta requested or old SDK version)
+          data = response as Sale[];
+          total = undefined;
+        } else if (response && typeof response === "object") {
+          // Response is an object with data and meta
+          const result = response as any;
+          data = (result.data || result) as Sale[];
+          total = result.meta?.total_count;
+        } else {
+          data = [];
+          total = undefined;
+        }
+
+        if (process.env.NODE_ENV === "development") {
+          console.log(`✅ Fetched ${data.length} sales`, {
+            total,
+            responseType: Array.isArray(response) ? "array" : "object",
+            hasMeta: !Array.isArray(response) && (response as any)?.meta,
+          });
+        }
+
+        return {
+          data: Array.isArray(data) ? data : [],
+          total: total,
+        };
       },
-      [],
+      { data: [], total: 0 },
       false
     );
   };
 
   const getSale = async (id: string): Promise<Sale | null> => {
+    // On client, use server API route to avoid CORS
+    if (process.client) {
+      try {
+        return await $fetch<Sale>(`/api/sales/${id}`);
+      } catch (error: any) {
+        if (process.env.NODE_ENV === "development") {
+          console.error(`[getSale] Error fetching sale ${id}:`, error);
+        }
+        return null;
+      }
+    }
+
+    // On server, use direct Directus call
     return handleDirectusRequest(async () => {
+      // Use explicit fields instead of ["*"] to avoid alias field issues
+      const explicitFields = [
+        "id",
+        "sale_date",
+        "sale_type",
+        "total_amount",
+        "total_cost",
+        "total_profit",
+        "notes",
+        "user_created",
+        "date_created",
+        "user_updated",
+        "date_updated",
+      ];
       return (await client.request(
         readItem("sales" as any, id, {
-          fields: ["*"],
+          fields: explicitFields,
         })
       )) as unknown as Sale;
     }, null);
@@ -123,28 +434,33 @@ export const useSales = () => {
     const startOfDay = `${date}T00:00:00`;
     const endOfDay = `${date}T23:59:59`;
 
-    const sales = await getSales({
+    const result = await getSales({
       sale_date: {
         _gte: startOfDay,
         _lte: endOfDay,
       },
     });
 
-    const totalAmount = sales.reduce(
-      (sum, sale) => sum + (sale.total_amount || 0),
-      0
-    );
-    const totalCost = sales.reduce(
-      (sum, sale) => sum + (sale.total_cost || 0),
-      0
-    );
+    const sales = result.data || [];
+
+    // Safely convert to numbers, handling null, undefined, and string values
+    const totalAmount = sales.reduce((sum, sale) => {
+      const amount = Number(sale.total_amount) || 0;
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+
+    const totalCost = sales.reduce((sum, sale) => {
+      const cost = Number(sale.total_cost) || 0;
+      return sum + (isNaN(cost) ? 0 : cost);
+    }, 0);
+
     const totalProfit = totalAmount - totalCost;
 
     return {
       date,
-      total_amount: totalAmount,
-      total_cost: totalCost,
-      total_profit: totalProfit,
+      total_amount: isNaN(totalAmount) ? 0 : totalAmount,
+      total_cost: isNaN(totalCost) ? 0 : totalCost,
+      total_profit: isNaN(totalProfit) ? 0 : totalProfit,
       sales_count: sales.length,
       items: sales,
     };
@@ -166,15 +482,26 @@ export const useSales = () => {
     const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
     const endDate = `${year}-${String(month).padStart(2, "0")}-31`;
 
-    const sales = await getSales({
+    const result = await getSales({
       sale_date: {
         _gte: startDate,
         _lte: endDate,
       },
     });
 
-    const totalAmount = sales.reduce((sum, sale) => sum + sale.total_amount, 0);
-    const totalCost = sales.reduce((sum, sale) => sum + sale.total_cost, 0);
+    const sales = result.data || [];
+
+    // Safely convert to numbers, handling null, undefined, and string values
+    const totalAmount = sales.reduce((sum: number, sale: Sale) => {
+      const amount = Number(sale.total_amount) || 0;
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+
+    const totalCost = sales.reduce((sum: number, sale: Sale) => {
+      const cost = Number(sale.total_cost) || 0;
+      return sum + (isNaN(cost) ? 0 : cost);
+    }, 0);
+
     const totalProfit = totalAmount - totalCost;
 
     const productMap = new Map<
@@ -182,7 +509,7 @@ export const useSales = () => {
       { product: Product; quantity: number; revenue: number }
     >();
 
-    sales.forEach((sale) => {
+    sales.forEach((sale: Sale) => {
       if (sale.sale_items) {
         sale.sale_items.forEach((item) => {
           const productId =
@@ -214,9 +541,9 @@ export const useSales = () => {
     return {
       year,
       month,
-      total_amount: totalAmount,
-      total_cost: totalCost,
-      total_profit: totalProfit,
+      total_amount: isNaN(totalAmount) ? 0 : totalAmount,
+      total_cost: isNaN(totalCost) ? 0 : totalCost,
+      total_profit: isNaN(totalProfit) ? 0 : totalProfit,
       sales_count: sales.length,
       items: sales,
       topProducts,

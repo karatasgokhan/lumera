@@ -1,4 +1,4 @@
-import { createDirectus, rest, readItem } from "@directus/sdk";
+import { createDirectus, rest, updateItem } from "@directus/sdk";
 import type { Schema } from "~/types";
 
 export default defineEventHandler(async (event) => {
@@ -13,7 +13,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const id = getRouterParam(event, "id");
-
   if (!id) {
     throw createError({
       statusCode: 400,
@@ -21,26 +20,16 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const query = getQuery(event);
+  const body = await readBody(event);
   const client = createDirectus<Schema>(directusUrl).with(rest());
 
-  const queryParams: any = {
-    fields: query.fields ? JSON.parse(query.fields as string) : ["*"],
-  };
-
   try {
-    const product = await client.request(readItem("products", id, queryParams));
-    return product;
+    const response = await client.request(updateItem("products", id, body));
+    return response;
   } catch (error: any) {
-    if (error?.response?.status === 404 || error?.status === 404) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "Product not found",
-      });
-    }
     throw createError({
       statusCode: error?.response?.status || error?.status || 500,
-      statusMessage: error?.message || "Failed to fetch product",
+      statusMessage: error?.message || "Failed to update product",
     });
   }
 });

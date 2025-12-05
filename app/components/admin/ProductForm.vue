@@ -232,6 +232,7 @@
 import type { Category } from "~/types";
 import { useProducts } from "~/composables/useProducts";
 import { getImageUrl } from "~/utils";
+import Button from "~/components/ui/Button.vue";
 
 interface Props {
   categories: Category[];
@@ -305,33 +306,28 @@ const removeUploadedImage = (imageId: string) => {
 };
 
 const uploadFiles = async (files: File[]): Promise<string[]> => {
-  const directusUrl = config.public.directusUrl;
-  if (!directusUrl) {
-    throw new Error("Directus URL yapılandırılmamış");
+  if (files.length === 0) {
+    return [];
   }
 
-  const uploadedIds: string[] = [];
-
-  for (const file of files) {
-    const formData = new FormData();
+  const formData = new FormData();
+  files.forEach((file) => {
     formData.append("file", file);
+  });
 
-    try {
-      const response = await $fetch<{ data: { id: string } }>(
-        `${directusUrl}/files`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-      uploadedIds.push(response.data.id);
-    } catch (error) {
-      console.error("Dosya yükleme hatası:", error);
-      throw error;
-    }
+  try {
+    const response = await $fetch<{ data: Array<{ id: string }> }>(
+      "/api/files",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+    return response.data.map((item) => item.id);
+  } catch (error) {
+    console.error("Dosya yükleme hatası:", error);
+    throw error;
   }
-
-  return uploadedIds;
 };
 
 const handleSubmit = async () => {

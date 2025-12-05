@@ -9,11 +9,13 @@ export function cn(...inputs: ClassValue[]) {
 
 // Yardımcı fonksiyonlar
 
-export function formatPrice(price: number): string {
+export function formatPrice(price: number | null | undefined): string {
+  // Handle null, undefined, or NaN values
+  const safePrice = price == null || isNaN(Number(price)) ? 0 : Number(price);
   return new Intl.NumberFormat("tr-TR", {
     style: "currency",
     currency: "TRY",
-  }).format(price);
+  }).format(safePrice);
 }
 
 export function formatDate(date: Date): string {

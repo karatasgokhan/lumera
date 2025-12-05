@@ -1,7 +1,7 @@
 <template>
   <component
-    :is="as"
-    :class="cn(buttonVariants({ variant, size }), ($attrs.class as ClassValue))"
+    :is="props.as"
+    :class="cn(buttonVariants({ variant: props.variant, size: props.size }), ($attrs.class as ClassValue))"
     v-bind="$attrs"
   >
     <slot />
@@ -42,11 +42,18 @@ const buttonVariants = cva(
   }
 );
 
-interface Props extends VariantProps<typeof buttonVariants> {
-  as?: string | object;
-}
+type ButtonVariants = VariantProps<typeof buttonVariants>;
 
-withDefaults(defineProps<Props>(), {
-  as: "button",
-});
+const props = withDefaults(
+  defineProps<{
+    variant?: ButtonVariants["variant"];
+    size?: ButtonVariants["size"];
+    as?: string | object;
+  }>(),
+  {
+    as: "button",
+    variant: "default",
+    size: "default",
+  }
+);
 </script>

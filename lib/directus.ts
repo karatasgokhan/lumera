@@ -78,7 +78,7 @@ async function handleDirectusRequest<T>(
 export async function getProducts(filters?: any): Promise<Product[]> {
   return handleDirectusRequest(async () => {
     const query: any = {
-      fields: ["*"],
+      fields: ["*", "category.id", "category.name", "category.slug"],
       sort: ["-date_created"],
     };
 
@@ -107,7 +107,7 @@ export async function getProduct(id: string): Promise<Product | null> {
     try {
       const product = await directus.request(
         readItem("products", id, {
-          fields: ["*"],
+          fields: ["*", "category.id", "category.name", "category.slug"],
         })
       );
       return product as unknown as Product;
@@ -157,7 +157,14 @@ export async function getCategories(): Promise<Category[]> {
     async () => {
       return (await directus.request(
         readItems("categories", {
-          fields: ["*"],
+          fields: [
+            "id",
+            "name",
+            "slug",
+            "image",
+            "date_created",
+            "date_updated",
+          ],
           sort: ["-date_created"],
           // Removed status filter - Category type doesn't have status field
         } as any)
@@ -172,7 +179,7 @@ export async function getCategory(id: string): Promise<Category | null> {
   return handleDirectusRequest(async () => {
     return (await directus.request(
       readItem("categories", id, {
-        fields: ["*"],
+        fields: ["id", "name", "slug", "image", "date_created", "date_updated"],
       })
     )) as unknown as Category;
   }, null);

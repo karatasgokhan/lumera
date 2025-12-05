@@ -1,0 +1,392 @@
+# Analytics Tag Eklenmiş Component'lar Listesi
+
+Bu dosya, projede analytics tag eklenmiş tüm component'ları içermektedir.
+
+## Analytics Tag Kullanım Şekilleri
+
+1. **analyticsTag prop'u**: Tab component'larında kullanılan analytics tag değerleri
+2. **report* fonksiyonları**: Analytics tracking için kullanılan report fonksiyonları
+3. **pageFiltersValue**: Analytics tag değerlerini report fonksiyonlarına geçiren component'lar
+
+---
+
+## 1. AnalyticsTag Enum Kullanan Component'lar
+
+### 1.1. UserDashboard/MyUses/MyUsageDetails/components/AuthContent
+- **Dosya**: `src/components/UserDashboard/MyUses/MyUsageDetails/components/AuthContent/index.tsx`
+- **Analytics Tag'ler**: 
+  - `AnalyticsTags.ALL` (tumu)
+  - `AnalyticsTags.VOICE` (konusma)
+  - `AnalyticsTags.DATA` (internet)
+  - `AnalyticsTags.SMS` (mesajlasma)
+  - `AnalyticsTags.OTHER` (diger)
+- **Kullanım**: Tab'lar için analytics tag'leri tanımlanmış ve `pageFiltersValue` olarak report fonksiyonuna geçiriliyor
+- **Report Fonksiyonu**: `reportRemainingUsagesDetailPageOpen`
+
+### 1.2. MyProductAndServices/MyProductAndServicesDetail/UsageDetails
+- **Dosya**: `src/components/MyProductAndServices/MyProductAndServicesDetail/UsageDetails/index.tsx`
+- **Analytics Tag'ler**: 
+  - `AnalyticsTags.ALL` (tumu)
+  - `AnalyticsTags.VOICE` (konusma)
+  - `AnalyticsTags.DATA` (internet)
+  - `AnalyticsTags.SMS` (mesajlasma)
+  - `AnalyticsTags.OTHER` (diger)
+- **Kullanım**: Tab'lar için analytics tag'leri tanımlanmış ve `pageFiltersValue` olarak report fonksiyonuna geçiriliyor
+- **Report Fonksiyonu**: `reportRemainingUsagesDetailPageOpen`
+
+---
+
+## 2. Report Fonksiyonları Kullanan Component'lar
+
+### 2.1. Dashboard Component'ları
+
+#### Dashboard/Dashboard
+- **Dosya**: `src/components/Dashboard/Dashboard.tsx`
+- **Report Fonksiyonu**: `reportDashboardPageOpen`
+
+#### UserDashboard/components/Layouts/layouts
+- **Dosya**: `src/components/UserDashboard/components/Layouts/layouts.tsx`
+- **Report Fonksiyonu**: `reportDashboardPageOpen`
+
+---
+
+### 2.2. Billing Component'ları
+
+#### Billing/Main/components/Mobile/components/InvoicesMobileTable
+- **Dosya**: `src/components/Billing/Main/components/Mobile/components/InvoicesMobileTable/index.tsx`
+- **Report Fonksiyonu**: `reportBillingPageOpen`
+
+#### Billing/Main/components/Mobile/components/InvoiceReport
+- **Dosya**: `src/components/Billing/Main/components/Mobile/components/InvoiceReport/index.tsx`
+- **Report Fonksiyonu**: `reportReportsPageViewEvent`, `reportReportsPageOpen`
+
+#### Billing/Main/components/Mobile/components/TableActionMobileInvoice
+- **Dosya**: `src/components/Billing/Main/components/Mobile/components/TableActionMobileInvoice/index.tsx`
+- **Report Fonksiyonu**: `reportBillingDownloadExcelClick`
+
+#### Billing/Main/components/Fixed/components/InvoicesFixedTable
+- **Dosya**: `src/components/Billing/Main/components/Fixed/components/InvoicesFixedTable/index.tsx`
+- **Report Fonksiyonu**: `reportBillingDownloadExcelClick`, `reportBillingDownloadPdfClick`
+
+#### Billing/BillingDetail/hooks/useBillingDetailLayout
+- **Dosya**: `src/components/Billing/BillingDetail/hooks/useBillingDetailLayout.ts`
+- **Report Fonksiyonu**: `reportBillingDetailPage`
+
+#### Billing/BillingReports/components/Mobile
+- **Dosya**: `src/components/Billing/BillingReports/components/Mobile/index.tsx`
+- **Report Fonksiyonu**: `reportReportsPageOpen`
+
+#### Billing/BillingReports/components/Fixed
+- **Dosya**: `src/components/Billing/BillingReports/components/Fixed/index.tsx`
+- **Report Fonksiyonu**: `reportReportsPageOpen`
+
+#### Billing/BillingReceivable/components/Shared/BillingReceivableShared
+- **Dosya**: `src/components/Billing/BillingReceivable/components/Shared/BillingReceivableShared.tsx`
+- **Report Fonksiyonu**: `reportReceivablePage`
+
+#### Billing/BillingDeliveryPreference/components/Mobile
+- **Dosya**: `src/components/Billing/BillingDeliveryPreference/components/Mobile/index.tsx`
+- **Report Fonksiyonu**: `reportDeliveryPreferencesPage`
+
+#### Billing/InvoiceComparator
+- **Dosya**: `src/components/Billing/InvoiceComparator/InvoiceComparator.tsx`
+- **Report Fonksiyonu**: `reportInvoiceComparisonPage`
+
+#### Billing/InvoiceComparison/components/FixedBilling/components/InvoicesFixedTable
+- **Dosya**: `src/components/Billing/InvoiceComparison/components/FixedBilling/components/InvoicesFixedTable/InvoicesFixedTable.tsx`
+- **Report Fonksiyonu**: `reportInvoiceComparisonPage`
+
+#### Billing/InvoiceComparison/components/MobileBilling/components/ICMobileTable
+- **Dosya**: `src/components/Billing/InvoiceComparison/components/MobileBilling/components/ICMobileTable/ICMobileTable.tsx`
+- **Report Fonksiyonu**: `reportInvoiceComparisonPage`
+
+#### Billing/Checkout
+- **Dosya**: `src/components/Billing/Checkout/Checkout.tsx`
+- **Report Fonksiyonu**: `reportCheckoutPage`, `reportCheckoutPageEvent`
+
+---
+
+### 2.3. MyProductAndServices Component'ları
+
+#### MyProductAndServices/MyProductAndServicesDetail
+- **Dosya**: `src/components/MyProductAndServices/MyProductAndServicesDetail/index.tsx`
+- **Report Fonksiyonu**: `reportRemainingUsagesDetailPageOpen`
+
+#### MyProductAndServices/MyProductAndServicesDetail/UsageDetails
+- **Dosya**: `src/components/MyProductAndServices/MyProductAndServicesDetail/UsageDetails/index.tsx`
+- **Report Fonksiyonu**: `reportRemainingUsagesDetailPageOpen`
+- **Analytics Tag**: `analyticsTag` prop'u kullanılıyor
+
+#### MyProductAndServices/EmployeeUsages/components/Common/components/EmployeeUsagesList
+- **Dosya**: `src/components/MyProductAndServices/EmployeeUsages/components/Common/components/EmployeeUsagesList/index.tsx`
+- **Report Fonksiyonu**: `reportRemainingUsagesPageOpen`
+- **pageFiltersValue**: Filter seçeneklerinden alınıyor
+
+#### MyProductAndServices/TariffAndPackages/components/Common/components/TariffandPackagesList
+- **Dosya**: `src/components/MyProductAndServices/TariffAndPackages/components/Common/components/TariffandPackagesList/index.tsx`
+- **Report Fonksiyonu**: `reportTariffAndPackagesPageOpen`
+
+#### MyProductAndServices/TariffAndPackages/Detail/components/Tariff
+- **Dosya**: `src/components/MyProductAndServices/TariffAndPackages/Detail/components/Tariff/index.tsx`
+- **Report Fonksiyonu**: `reportTariffAndPackagesEmployeeDetail`
+
+#### MyProductAndServices/TariffAndPackages/Detail/components/AddOns
+- **Dosya**: `src/components/MyProductAndServices/TariffAndPackages/Detail/components/AddOns/index.tsx`
+- **Report Fonksiyonu**: `reportTariffAndPackagesAdditionalPackages`
+
+#### MyProductAndServices/TariffAndPackages/Detail/components/AddOns/components/PacketDetailsModal
+- **Dosya**: `src/components/MyProductAndServices/TariffAndPackages/Detail/components/AddOns/components/PacketDetailsModal/index.tsx`
+- **Report Fonksiyonu**: `reportPackageDetail`
+
+#### MyProductAndServices/components/Common/components/FavoriteUsers
+- **Dosya**: `src/components/MyProductAndServices/components/Common/components/FavoriteUsers/index.tsx`
+- **Report Fonksiyonu**: `reportBuyAddForEmployeesPage`
+- **pageFiltersValue**: Filter seçeneklerinden alınıyor
+
+#### MyProductAndServices/components/Common/components/AllUsers
+- **Dosya**: `src/components/MyProductAndServices/components/Common/components/AllUsers/index.tsx`
+- **Report Fonksiyonu**: `reportBuyAddForEmployeesPage`
+- **pageFiltersValue**: Filter seçeneklerinden alınıyor
+
+#### MyProductAndServices/PurchaseAddon/components/Common/components/PurchaseAddonCard
+- **Dosya**: `src/components/MyProductAndServices/PurchaseAddon/components/Common/components/PurchaseAddonCard/index.tsx`
+- **Report Fonksiyonu**: `reportPackageDetail`
+
+#### MyProductAndServices/PurchaseAddon/components/Common/components/AvailableAddOnsLine
+- **Dosya**: `src/components/MyProductAndServices/PurchaseAddon/components/Common/components/AvailableAddOnsLine/index.tsx`
+- **Report Fonksiyonu**: `reportPurchaseAddonPage`
+
+#### MyProductAndServices/PurchaseAddon/components/Common/components/AddOnsYouCanBuy
+- **Dosya**: `src/components/MyProductAndServices/PurchaseAddon/components/Common/components/AddOnsYouCanBuy/index.tsx`
+- **Report Fonksiyonu**: `reportPurchaseAddonPage`
+- **pageFiltersValue**: Filter seçeneklerinden alınıyor
+
+#### MyProductAndServices/PurchaseAddon/components/Layouts
+- **Dosya**: `src/components/MyProductAndServices/PurchaseAddon/components/Layouts/index.tsx`
+- **Report Fonksiyonu**: `reportCancelPackage`
+
+#### MyProductAndServices/AddOnRecommendations/components/Common/components/AddOnRecommendationsList
+- **Dosya**: `src/components/MyProductAndServices/AddOnRecommendations/components/Common/components/AddOnRecommendationsList/index.tsx`
+- **Report Fonksiyonu**: `reportAddOnRecommendations`
+- **pageFiltersValue**: Filter seçeneklerinden alınıyor
+
+#### MyProductAndServices/UserRequest/components/Layout
+- **Dosya**: `src/components/MyProductAndServices/UserRequest/components/Layout/index.tsx`
+- **Report Fonksiyonu**: `reportRequestListPageView`
+
+#### MyProductAndServices/UserRequest/components/Common/components/Requests/components/Card
+- **Dosya**: `src/components/MyProductAndServices/UserRequest/components/Common/components/Requests/components/Card/index.tsx`
+- **Report Fonksiyonu**: `reportRequestDetailView`, `reportRequestRespondView`, `reportRequestApproveView`, `reportRequestRejectView`, `reportRespondUserRequests`
+
+#### MyProductAndServices/UserRequest/components/Common/components/Requests/components/ModalContent
+- **Dosya**: `src/components/MyProductAndServices/UserRequest/components/Common/components/Requests/components/ModalContent/index.tsx`
+- **Report Fonksiyonu**: `reportRequestDetailView`, `reportRequestRespondView`, `reportRequestApproveView`, `reportRequestRejectView`
+
+---
+
+### 2.4. Data Component'ları
+
+#### MyProductAndServices/Data/Utilisation/components/Fixed/FixedUtilisation
+- **Dosya**: `src/components/MyProductAndServices/Data/Utilisation/components/Fixed/FixedUtilisation.tsx`
+- **Report Fonksiyonu**: `reportLineUsagePageOpen`, `reportLineUsageEvent`
+
+#### MyProductAndServices/Data/Utilisation/UtilisationDetail/Fixed/FixedUtilisationDetail
+- **Dosya**: `src/components/MyProductAndServices/Data/Utilisation/UtilisationDetail/Fixed/FixedUtilisationDetail.tsx`
+- **Report Fonksiyonu**: `reportLineUsageDetailPageOpen`
+
+#### MyProductAndServices/Data/InternetVpnAvailability/components/Layout
+- **Dosya**: `src/components/MyProductAndServices/Data/InternetVpnAvailability/components/Layout/index.tsx`
+- **Report Fonksiyonu**: `reportInternetVpnAccessibilityPageOpen`, `reportInternetVpnPageOpen`, `reportInternetVpnRecordOpenPageOpen`, `reportInternetVpnLineDetailPageOpen`
+
+#### MyProductAndServices/Data/InternetVpnAvailability/components/Common/components/UtilisationList/UtilisationList
+- **Dosya**: `src/components/MyProductAndServices/Data/InternetVpnAvailability/components/Common/components/UtilisationList/UtilisationList.tsx`
+- **Report Fonksiyonu**: `reportInternetVpnEvent`
+- **pageFiltersValue**: Filter değerinden alınıyor
+
+#### MyProductAndServices/Data/LineDetail/components/Layouts
+- **Dosya**: `src/components/MyProductAndServices/Data/LineDetail/components/Layouts/index.tsx`
+- **Report Fonksiyonu**: `reportInternetVpnLineDetailPageOpen`
+
+#### MyProductAndServices/Data/SdWanAvailability/components/Layout
+- **Dosya**: `src/components/MyProductAndServices/Data/SdWanAvailability/components/Layout/index.tsx`
+- **Report Fonksiyonu**: `reportSdWanAvailabilityPageOpen`, `reportSdWanTunnelStatusPageOpen`, `reportSdWanEvent`
+
+#### MyProductAndServices/Data/SdWanAvailability/components/Common/components/SdWanAvailabilityList
+- **Dosya**: `src/components/MyProductAndServices/Data/SdWanAvailability/components/Common/components/SdWanAvailabilityList/index.tsx`
+- **Report Fonksiyonu**: `reportSdWanTunnelStatusPageOpen`
+
+---
+
+### 2.5. Cloud Component'ları
+
+#### MyProductAndServices/Cloud/Database/components/Fixed
+- **Dosya**: `src/components/MyProductAndServices/Cloud/Database/components/Fixed/index.tsx`
+- **Report Fonksiyonu**: `reportCloudDatabasePageOpen`
+
+#### MyProductAndServices/Cloud/Database/DatabaseDetail/Fixed/DatabaseDetailTabLayout
+- **Dosya**: `src/components/MyProductAndServices/Cloud/Database/DatabaseDetail/Fixed/DatabaseDetailTabLayout/index.tsx`
+- **Report Fonksiyonu**: `reportCloudDatabaseDetailPageOpen`
+
+#### MyProductAndServices/Cloud/Servers/components/Fixed
+- **Dosya**: `src/components/MyProductAndServices/Cloud/Servers/components/Fixed/index.tsx`
+- **Report Fonksiyonu**: `reportCloudServerPageOpen`
+- **pageFiltersValue**: Filter seçeneklerinden alınıyor
+
+#### MyProductAndServices/Cloud/Servers/ServerDetail/Fixed/ServerDetailTabLayout
+- **Dosya**: `src/components/MyProductAndServices/Cloud/Servers/ServerDetail/Fixed/ServerDetailTabLayout/index.tsx`
+- **Report Fonksiyonu**: `reportCloudServerDetailPageOpen`
+
+#### MyProductAndServices/Cloud/Backup/Netbackup/components/Fixed
+- **Dosya**: `src/components/MyProductAndServices/Cloud/Backup/Netbackup/components/Fixed/index.tsx`
+- **Report Fonksiyonu**: `reportCloudNetbackupPageOpen`
+
+#### MyProductAndServices/Cloud/Backup/Veeam/components/Fixed
+- **Dosya**: `src/components/MyProductAndServices/Cloud/Backup/Veeam/components/Fixed/index.tsx`
+- **Report Fonksiyonu**: `reportCloudVeeamPageOpen`
+
+#### MyProductAndServices/Cloud/Backup/Veeam/VeeamDetail/components/Fixed
+- **Dosya**: `src/components/MyProductAndServices/Cloud/Backup/Veeam/VeeamDetail/components/Fixed/index.tsx`
+- **Report Fonksiyonu**: `reportCloudVeeamDetailPageOpen`
+
+#### MyProductAndServices/Cloud/Alarms/components/Fixed
+- **Dosya**: `src/components/MyProductAndServices/Cloud/Alarms/components/Fixed/index.tsx`
+- **Report Fonksiyonu**: `reportCloudAlarmsPageOpen`
+
+---
+
+### 2.6. Offers Component'ları
+
+#### Offers/TariffAndCampaignOffers/components/Layouts/LayoutMobile
+- **Dosya**: `src/components/Offers/TariffAndCampaignOffers/components/Layouts/LayoutMobile.tsx`
+- **Report Fonksiyonu**: `reportSpecialOffersPageOpen`
+
+#### Offers/TariffAndCampaignOffers/components/Mobile/components/MobileHubPage
+- **Dosya**: `src/components/Offers/TariffAndCampaignOffers/components/Mobile/components/MobileHubPage/MobileHubPage.tsx`
+- **Report Fonksiyonu**: `reportSpecialOffersTariffCampaignPageOpen`, `reportSpecialOffersTariffCampaignLineListPageOpen`, `reportSpecialOffersGainSelectionPageOpen`, `reportSpecialOffersGainSelectionSearchOpen`, `reportSpecialOffersGainSelectionSelectableOpen`, `reportSpecialOffersLinkTracking`
+
+#### Offers/TariffAndCampaignOffers/TariffOffers/components/Mobile/components/MobileTariffOffers
+- **Dosya**: `src/components/Offers/TariffAndCampaignOffers/TariffOffers/components/Mobile/components/MobileTariffOffers/MobileTariffOffers.tsx`
+- **Report Fonksiyonu**: `reportSpecialOffersTariffCampaignPageOpen`
+
+#### Offers/TariffAndCampaignOffers/LineList/components/Mobile/components/MobileLineList
+- **Dosya**: `src/components/Offers/TariffAndCampaignOffers/LineList/components/Mobile/components/MobileLineList/MobileLineList.tsx`
+- **Report Fonksiyonu**: `reportSpecialOffersTariffCampaignLineListPageOpen`, `reportSpecialOffersGainSelectionPageOpen`, `reportSpecialOffersGainSelectionSearchOpen`, `reportSpecialOffersGainSelectionSelectableOpen`, `reportSpecialOffersLinkTracking`
+
+#### Offers/TariffAndCampaignOffers/BillingAccounts/components/Mobile/components/MobileBillingAccounts
+- **Dosya**: `src/components/Offers/TariffAndCampaignOffers/BillingAccounts/components/Mobile/components/MobileBillingAccounts/MobileBillingAccounts.tsx`
+- **Report Fonksiyonu**: `reportSpecialOffersCheckout`
+
+#### Offers/TariffAndCampaignOffers/BillingAccounts/components/Mobile/components/MobileBillingAccounts/components/BillingAccountsSummary
+- **Dosya**: `src/components/Offers/TariffAndCampaignOffers/BillingAccounts/components/Mobile/components/MobileBillingAccounts/components/BillingAccountsSummary/BillingAccountsSummary.tsx`
+- **Report Fonksiyonu**: `reportSpecialOffersCheckout`
+
+#### Offers/TariffAndCampaignOffers/BillingAccounts/components/Mobile/components/MobileBillingAccounts/components/GainSelectionModal
+- **Dosya**: `src/components/Offers/TariffAndCampaignOffers/BillingAccounts/components/Mobile/components/MobileBillingAccounts/components/GainSelectionModal/GainSelectionModal.tsx`
+- **Report Fonksiyonu**: `reportSpecialOffersGainSelectionSelectableOpen`
+
+#### Offers/TariffAndCampaignOffers/BillingAccounts/components/Mobile/components/MobileBillingAccounts/components/BillingAccountsTable/components/BillingAccountModal
+- **Dosya**: `src/components/Offers/TariffAndCampaignOffers/BillingAccounts/components/Mobile/components/MobileBillingAccounts/components/BillingAccountsTable/components/BillingAccountModal/BillingAccountModal.tsx`
+- **Report Fonksiyonu**: `reportSpecialOffersGainSelectionSearchOpen`
+
+#### Offers/TariffAndCampaignOffers/BillingAccounts/components/Mobile/components/MobileBillingAccounts/components/AcceptOfferSuccessModal
+- **Dosya**: `src/components/Offers/TariffAndCampaignOffers/BillingAccounts/components/Mobile/components/MobileBillingAccounts/components/AcceptOfferSuccessModal/AcceptOfferSuccessModal.tsx`
+- **Report Fonksiyonu**: `reportSpecialOffersResultSuccess`
+
+---
+
+### 2.7. LineAndTelephoneOperations Component'ları
+
+#### LineAndTelephoneOperations/RequestSimCard/Layouts/LayoutMobile
+- **Dosya**: `src/components/LineAndTelephoneOperations/RequestSimCard/Layouts/LayoutMobile.tsx`
+- **Report Fonksiyonu**: `reportRequestSimCardPageOpen`
+
+#### LineAndTelephoneOperations/RequestSimCard/Mobile/components/MobileRequestSimCard/components/RequestSimCard
+- **Dosya**: `src/components/LineAndTelephoneOperations/RequestSimCard/Mobile/components/MobileRequestSimCard/components/RequestSimCard/index.tsx`
+- **Report Fonksiyonu**: `reportRequestSimCardConfirm`, `reportRequestSimCardDeliveryInformation`, `reportRequestSimCardResult`
+
+#### LineAndTelephoneOperations/RequestSimCard/Mobile/components/RequestDetails/components/InputAddress/components/PopupContent
+- **Dosya**: `src/components/LineAndTelephoneOperations/RequestSimCard/Mobile/components/RequestDetails/components/InputAddress/components/PopupContent/index.tsx`
+- **Report Fonksiyonu**: `reportRequestSimCardRegisteredAddresses`
+
+#### LineAndTelephoneOperations/SimCardChange/components/Mobile/components/MobileSimCardChange
+- **Dosya**: `src/components/LineAndTelephoneOperations/SimCardChange/components/Mobile/components/MobileSimCardChange/MobileSimCardChange.tsx`
+- **Report Fonksiyonu**: `reportSimCardChangePageOpen`
+
+#### LineAndTelephoneOperations/SimCardChange/SingleChange/components/Mobile/MobileSingleChange
+- **Dosya**: `src/components/LineAndTelephoneOperations/SimCardChange/SingleChange/components/Mobile/MobileSingleChange.tsx`
+- **Report Fonksiyonu**: `reportSimCardChangeSinglePage`, `reportSimCardChangeSingleResult`
+
+#### LineAndTelephoneOperations/SimCardChange/BulkChange/components/Mobile/MobileBulkChange
+- **Dosya**: `src/components/LineAndTelephoneOperations/SimCardChange/BulkChange/components/Mobile/MobileBulkChange/MobileBulkChange.tsx`
+- **Report Fonksiyonu**: `reportSimCardChangeBulkPage`, `reportSimCardChangeBulkResult`
+
+#### LineAndTelephoneOperations/SimCardChange/BulkChange/components/Mobile/MobileBulkChange/components/BulkChangeValidationError
+- **Dosya**: `src/components/LineAndTelephoneOperations/SimCardChange/BulkChange/components/Mobile/MobileBulkChange/components/BulkChangeValidationError/BulkChangeValidationError.tsx`
+- **Report Fonksiyonu**: `reportSimCardChangeError`
+
+#### LineAndTelephoneOperations/SimCardChange/BulkChange/components/Mobile/MobileBulkChange/components/BulkChangeRequest
+- **Dosya**: `src/components/LineAndTelephoneOperations/SimCardChange/BulkChange/components/Mobile/MobileBulkChange/components/BulkChangeRequest/BulkChangeRequest.tsx`
+- **Report Fonksiyonu**: `reportSimCardChangeEvent`
+
+#### LineAndTelephoneOperations/SimCardChange/components/Mobile/components/MyRequests/MyRequests
+- **Dosya**: `src/components/LineAndTelephoneOperations/SimCardChange/components/Mobile/components/MyRequests/MyRequests.tsx`
+- **Report Fonksiyonu**: `reportSimCardChangeCancelPage`, `reportSimCardChangeCancelResult`, `reportSimCardChangeEvent`
+- **pageFiltersValue**: Filter seçeneklerinden alınıyor
+
+#### LineAndTelephoneOperations/UserLineAndServiceSettings/components/Mobile/MobileUserLineAndServiceSettings
+- **Dosya**: `src/components/LineAndTelephoneOperations/UserLineAndServiceSettings/components/Mobile/MobileUserLineAndServiceSettings/index.tsx`
+- **Report Fonksiyonu**: `reportUserLineAndServiceSettingsDetailPage`, `reportUserLineAndServiceSettingsEvent`
+
+#### LineAndTelephoneOperations/LineAndServiceSettingsDetail/components/Mobile/MobileLineAndServiceSettingsDetail
+- **Dosya**: `src/components/LineAndTelephoneOperations/LineAndServiceSettingsDetail/components/Mobile/MobileLineAndServiceSettingsDetail/index.tsx`
+- **Report Fonksiyonu**: `reportUserDashboardLineAndServiceSettingsDetailPage`, `reportUserLineAndServiceSettingsNumberSelectionPage`, `reportUserLineAndServiceSettingsEvent`
+
+#### LineAndTelephoneOperations/ContractsAndCommitments/components/Mobile/CommitmensLines
+- **Dosya**: `src/components/LineAndTelephoneOperations/ContractsAndCommitments/components/Mobile/CommitmensLines/index.tsx`
+- **Report Fonksiyonu**: `reportContractCommitmentsPageOpen`, `reportContractCommitmentsClick`
+
+---
+
+### 2.8. UserDashboard Component'ları
+
+#### UserDashboard/MyUses
+- **Dosya**: `src/components/UserDashboard/MyUses/index.tsx`
+- **Report Fonksiyonu**: `reportRemainingUsagesDetailPageOpen`
+
+#### UserDashboard/MyUses/MyUsageDetails/components/AuthContent
+- **Dosya**: `src/components/UserDashboard/MyUses/MyUsageDetails/components/AuthContent/index.tsx`
+- **Report Fonksiyonu**: `reportRemainingUsagesDetailPageOpen`
+- **Analytics Tag**: `analyticsTag` prop'u kullanılıyor
+
+#### UserDashboard/MyUses/MyUsageDetails/components/UnAuthContent
+- **Dosya**: `src/components/UserDashboard/MyUses/MyUsageDetails/components/UnAuthContent/index.tsx`
+- **Report Fonksiyonu**: `reportRemainingUsagesDetailPageOpen`
+
+#### UserDashboard/MyTariffAndPackages/components/MyTariff
+- **Dosya**: `src/components/UserDashboard/MyTariffAndPackages/components/MyTariff/index.tsx`
+- **Report Fonksiyonu**: `reportTariffAndPackagesPageOpen`
+
+#### UserDashboard/MyTariffAndPackages/components/MyAdditionalPackages
+- **Dosya**: `src/components/UserDashboard/MyTariffAndPackages/components/MyAdditionalPackages/index.tsx`
+- **Report Fonksiyonu**: `reportTariffAndPackagesAdditionalPackages`
+
+#### UserDashboard/UserDashboardLineAndServiceSettings
+- **Dosya**: `src/components/UserDashboard/UserDashboardLineAndServiceSettings/index.tsx`
+- **Report Fonksiyonu**: `reportUserDashboardLineAndServiceSettingsDetailPage`
+
+---
+
+### 2.9. Page Component'ları
+
+#### app/[lng]/(portal-layout)/company-selection/page
+- **Dosya**: `src/app/[lng]/(portal-layout)/company-selection/page.tsx`
+- **Report Fonksiyonu**: `reportCompanySelectionPageOpen`
+
+---
+
+## 4. Notlar
+
+- Test dosyaları (`__test__`, `__tests__`, `.test.tsx`) bu listeden hariç tutulmuştur
+- Bazı component'lar birden fazla report fonksiyonu kullanmaktadır
+- `pageFiltersValue` kullanan component'lar genellikle filter/tab seçeneklerinden analytics tag değerlerini alır
+- Analytics tag'ler genellikle `pageFiltersValue` parametresi olarak report fonksiyonlarına geçirilir

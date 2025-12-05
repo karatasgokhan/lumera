@@ -108,7 +108,10 @@ The following collections are required in Directus:
 
 ```env
 NUXT_PUBLIC_DIRECTUS_URL=https://your-directus-url.com/
+DIRECTUS_STATIC_TOKEN=your-static-token-here
 ```
+
+**Note:** `DIRECTUS_STATIC_TOKEN` is required for server-side API operations (create, update, delete) on protected collections like `sales` and `sale_items`. You can create a static token in Directus under Settings > Access Tokens.
 
 ## Branch
 
