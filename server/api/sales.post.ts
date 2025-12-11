@@ -105,30 +105,6 @@ export default defineEventHandler(async (event) => {
 
     // Use direct REST API call with minimal fields to avoid alias field issues
     try {
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "sales.post.ts:107",
-            message: "Before URL construction",
-            data: {
-              directusUrl,
-              directusUrlLength: directusUrl?.length,
-              hasTrailingSlash: directusUrl?.endsWith("/"),
-              saleId: sale.id,
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            runId: "run1",
-            hypothesisId: "A",
-          }),
-        }
-      ).catch(() => {});
-      // #endregion
-
       // Normalize URL: remove trailing slash if present, then add path
       // NOTE: Do NOT include fields parameter in PATCH requests - it causes Directus
       // to try to SELECT alias fields (like stock_movements) which don't exist as columns
@@ -136,30 +112,6 @@ export default defineEventHandler(async (event) => {
         ? directusUrl.slice(0, -1)
         : directusUrl;
       const updateUrl = `${normalizedDirectusUrl}/items/sales/${sale.id}`;
-
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "sales.post.ts:112",
-            message: "After URL construction",
-            data: {
-              normalizedDirectusUrl,
-              updateUrl,
-              updateUrlLength: updateUrl.length,
-              note: "fields parameter removed to avoid alias field SELECT",
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            runId: "run2",
-            hypothesisId: "B",
-          }),
-        }
-      ).catch(() => {});
-      // #endregion
 
       const updateResponse = await fetch(updateUrl, {
         method: "PATCH",
@@ -176,29 +128,6 @@ export default defineEventHandler(async (event) => {
         }),
       });
 
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "sales.post.ts:125",
-            message: "Update response received",
-            data: {
-              status: updateResponse.status,
-              statusText: updateResponse.statusText,
-              ok: updateResponse.ok,
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            runId: "run1",
-            hypothesisId: "A",
-          }),
-        }
-      ).catch(() => {});
-      // #endregion
-
       // Directus PATCH tries to return the updated item, which causes it to SELECT alias fields
       // This fails with SQL errors. We'll check status and handle response parsing gracefully.
       if (
@@ -208,72 +137,14 @@ export default defineEventHandler(async (event) => {
         // Status indicates success - try to parse response, but don't fail if it errors
         // The actual update may have succeeded even if response parsing fails due to alias fields
         try {
-          const updateResult = await updateResponse.json();
-          // #region agent log
-          fetch(
-            "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                location: "sales.post.ts:202",
-                message: "Update response parsed successfully",
-                data: { updateResult, totalAmount, totalCost, totalProfit },
-                timestamp: Date.now(),
-                sessionId: "debug-session",
-                runId: "run3",
-                hypothesisId: "C",
-              }),
-            }
-          ).catch(() => {});
-          // #endregion
+          await updateResponse.json();
         } catch (parseError: any) {
           // Response parsing failed (likely due to alias field SELECT error)
           // But status was 200/204, so update likely succeeded
-          // #region agent log
-          fetch(
-            "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                location: "sales.post.ts:220",
-                message: "Update response parse failed but status OK",
-                data: {
-                  status: updateResponse.status,
-                  parseError: parseError?.message,
-                  note: "Update may have succeeded despite parse error - will verify",
-                },
-                timestamp: Date.now(),
-                sessionId: "debug-session",
-                runId: "run3",
-                hypothesisId: "C",
-              }),
-            }
-          ).catch(() => {});
-          // #endregion
         }
         updateSuccess = true;
       } else {
         const errorText = await updateResponse.text();
-        // #region agent log
-        fetch(
-          "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              location: "sales.post.ts:240",
-              message: "Update failed - non-OK status",
-              data: { status: updateResponse.status, errorText, updateUrl },
-              timestamp: Date.now(),
-              sessionId: "debug-session",
-              runId: "run3",
-              hypothesisId: "C",
-            }),
-          }
-        ).catch(() => {});
-        // #endregion
         throw new Error(`Update failed: ${updateResponse.status} ${errorText}`);
       }
 
@@ -349,80 +220,60 @@ export default defineEventHandler(async (event) => {
       const product = await getProduct(item.product);
       if (!product) continue;
 
-      const newStockQuantity = product.stock_quantity - item.quantity;
+      const currentStock = Number(product.stock_quantity) || 0;
+      const newStockQuantity = currentStock - item.quantity;
 
       // Update product stock
-      await updateProduct(item.product, {
-        stock_quantity: newStockQuantity,
-      });
+      try {
+        const updatedProduct = await updateProduct(item.product, {
+          stock_quantity: newStockQuantity,
+        });
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("✅ Stock updated:", {
+            productId: item.product,
+            productName: product.name,
+            oldStock: currentStock,
+            quantity: item.quantity,
+            newStock: newStockQuantity,
+            updatedStock: updatedProduct?.stock_quantity,
+          });
+        }
+      } catch (stockError: any) {
+        console.error("❌ Failed to update stock:", {
+          productId: item.product,
+          productName: product.name,
+          error: stockError?.message || stockError,
+        });
+        // Continue with stock movement even if stock update fails
+      }
 
       // Create stock movement record
-      await createStockMovement({
-        product: item.product,
-        movement_type: "out",
-        quantity: -item.quantity, // Negative for out
-        reason: "Satış",
-        related_sale: sale.id,
-        notes: `${body.sale_type === "online" ? "Online" : "Tezgah"} satış`,
-      });
+      try {
+        await createStockMovement({
+          product: item.product,
+          movement_type: "out",
+          quantity: -item.quantity, // Negative for out
+          reason: "Satış",
+          related_sale: sale.id,
+          notes: `${body.sale_type === "online" ? "Online" : "Tezgah"} satış`,
+        });
+      } catch (movementError: any) {
+        console.error("❌ Failed to create stock movement:", {
+          productId: item.product,
+          error: movementError?.message || movementError,
+        });
+        // Continue even if stock movement creation fails
+      }
     }
 
     // Read back the sale to verify totals were saved
     // If manual update failed, wait longer for the Directus Flow to process
     if (!updateSuccess) {
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "sales.post.ts:372",
-            message: "Waiting for Directus Flow to process",
-            data: {
-              saleId: sale.id,
-              expectedTotals: { totalAmount, totalCost, totalProfit },
-              waitTime: 2000,
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            runId: "run4",
-            hypothesisId: "D",
-          }),
-        }
-      ).catch(() => {});
-      // #endregion
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
     const { getSale } = useSales();
     let updatedSale = await getSale(sale.id);
-
-    // #region agent log
-    fetch("http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "sales.post.ts:395",
-        message: "Sale read back after update attempt",
-        data: {
-          saleId: sale.id,
-          updateSuccess,
-          readBackTotals: updatedSale
-            ? {
-                total_amount: updatedSale.total_amount,
-                total_cost: updatedSale.total_cost,
-                total_profit: updatedSale.total_profit,
-              }
-            : null,
-          expectedTotals: { totalAmount, totalCost, totalProfit },
-        },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        runId: "run4",
-        hypothesisId: "D",
-      }),
-    }).catch(() => {});
-    // #endregion
 
     if (!updatedSale) {
       throw createError({
@@ -459,28 +310,6 @@ export default defineEventHandler(async (event) => {
 
       // Retry update using REST API
       try {
-        // #region agent log
-        fetch(
-          "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              location: "sales.post.ts:255",
-              message: "Retry update - before URL construction",
-              data: {
-                directusUrl,
-                hasTrailingSlash: directusUrl?.endsWith("/"),
-              },
-              timestamp: Date.now(),
-              sessionId: "debug-session",
-              runId: "run1",
-              hypothesisId: "A",
-            }),
-          }
-        ).catch(() => {});
-        // #endregion
-
         // Normalize URL: remove trailing slash if present, then add path
         // NOTE: Do NOT include fields parameter in PATCH requests - it causes Directus
         // to try to SELECT alias fields (like stock_movements) which don't exist as columns
@@ -488,28 +317,6 @@ export default defineEventHandler(async (event) => {
           ? directusUrl.slice(0, -1)
           : directusUrl;
         const retryUpdateUrl = `${normalizedDirectusUrl}/items/sales/${sale.id}`;
-
-        // #region agent log
-        fetch(
-          "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              location: "sales.post.ts:260",
-              message: "Retry update - after URL construction",
-              data: {
-                retryUpdateUrl,
-                note: "fields parameter removed to avoid alias field SELECT",
-              },
-              timestamp: Date.now(),
-              sessionId: "debug-session",
-              runId: "run2",
-              hypothesisId: "B",
-            }),
-          }
-        ).catch(() => {});
-        // #endregion
 
         const retryUpdateResponse = await fetch(retryUpdateUrl, {
           method: "PATCH",
@@ -526,28 +333,6 @@ export default defineEventHandler(async (event) => {
           }),
         });
 
-        // #region agent log
-        fetch(
-          "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              location: "sales.post.ts:320",
-              message: "Retry update response",
-              data: {
-                status: retryUpdateResponse.status,
-                ok: retryUpdateResponse.ok,
-              },
-              timestamp: Date.now(),
-              sessionId: "debug-session",
-              runId: "run3",
-              hypothesisId: "C",
-            }),
-          }
-        ).catch(() => {});
-        // #endregion
-
         // Check status code - if 200/204, update likely succeeded even if response parsing fails
         if (
           retryUpdateResponse.ok &&
@@ -559,84 +344,15 @@ export default defineEventHandler(async (event) => {
             await retryUpdateResponse.json();
           } catch (parseError) {
             // Ignore parse errors - status indicates success
-            // #region agent log
-            fetch(
-              "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  location: "sales.post.ts:340",
-                  message: "Retry update response parse failed but status OK",
-                  data: {
-                    status: retryUpdateResponse.status,
-                    note: "Update may have succeeded despite parse error",
-                  },
-                  timestamp: Date.now(),
-                  sessionId: "debug-session",
-                  runId: "run3",
-                  hypothesisId: "C",
-                }),
-              }
-            ).catch(() => {});
-            // #endregion
           }
 
           // Read again to get updated values
           const retryUpdatedSale = await getSale(sale.id);
-          // #region agent log
-          fetch(
-            "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                location: "sales.post.ts:360",
-                message: "After retry - sale read back",
-                data: {
-                  retryUpdatedSale: retryUpdatedSale
-                    ? {
-                        total_amount: retryUpdatedSale.total_amount,
-                        total_cost: retryUpdatedSale.total_cost,
-                        total_profit: retryUpdatedSale.total_profit,
-                      }
-                    : null,
-                },
-                timestamp: Date.now(),
-                sessionId: "debug-session",
-                runId: "run3",
-                hypothesisId: "C",
-              }),
-            }
-          ).catch(() => {});
-          // #endregion
           if (retryUpdatedSale) {
             updatedSale = retryUpdatedSale;
           }
         } else {
           const retryErrorText = await retryUpdateResponse.text();
-          // #region agent log
-          fetch(
-            "http://127.0.0.1:7242/ingest/7c90cc52-87bb-46bd-bc8a-d79542485f17",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                location: "sales.post.ts:385",
-                message: "Retry update failed - non-OK status",
-                data: {
-                  status: retryUpdateResponse.status,
-                  retryErrorText,
-                  retryUpdateUrl,
-                },
-                timestamp: Date.now(),
-                sessionId: "debug-session",
-                runId: "run3",
-                hypothesisId: "C",
-              }),
-            }
-          ).catch(() => {});
-          // #endregion
           throw new Error(`Retry update failed: ${retryUpdateResponse.status}`);
         }
       } catch (retryError: any) {

@@ -170,10 +170,23 @@ const goToPage = (page: number) => {
   }
 };
 
-// Handle sale created event - refresh sales list
-const handleSaleCreated = () => {
+// Handle sale created event - refresh sales list and products
+const handleSaleCreated = async () => {
   // Refresh sales list - go to first page to show the new sale
   fetchSales(1);
+
+  // Refresh products list to update stock quantities
+  if (process.client) {
+    try {
+      const productsResult = await getProducts({ is_active: { _eq: true } });
+      products.value = productsResult;
+      if (process.env.NODE_ENV === "development") {
+        console.log("✅ Products refreshed after sale creation");
+      }
+    } catch (error) {
+      console.error("❌ Error refreshing products:", error);
+    }
+  }
 };
 
 // Watch for route changes to refetch data on client-side navigation
