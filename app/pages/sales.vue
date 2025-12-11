@@ -13,7 +13,10 @@
 
       <!-- Sale Form -->
       <div class="mb-8">
-        <AdminSaleForm :products="productsData" />
+        <AdminSaleForm
+          :products="productsData"
+          @sale-created="handleSaleCreated"
+        />
       </div>
 
       <!-- Recent Sales -->
@@ -165,6 +168,12 @@ const goToPage = (page: number) => {
   if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
     fetchSales(page);
   }
+};
+
+// Handle sale created event - refresh sales list
+const handleSaleCreated = () => {
+  // Refresh sales list - go to first page to show the new sale
+  fetchSales(1);
 };
 
 // Watch for route changes to refetch data on client-side navigation

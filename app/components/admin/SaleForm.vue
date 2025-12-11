@@ -104,8 +104,44 @@
             type="number"
             required
             min="1"
+            @input="updateSingleTotals"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
           />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Birim Fiyat (₺)
+          </label>
+          <input
+            v-model.number="singleUnitPrice"
+            type="number"
+            step="0.01"
+            min="0"
+            @input="updateSingleTotals"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+          />
+          <p class="mt-1 text-xs text-gray-500">
+            Ürün seçildiğinde otomatik doldurulur, değiştirilebilir
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Toplam Tutar (₺)
+          </label>
+          <input
+            v-model.number="singleTotalAmount"
+            type="number"
+            step="0.01"
+            min="0"
+            @input="updateSingleTotalsFromTotal"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+          />
+          <p class="mt-1 text-xs text-gray-500">
+            Hesaplanan:
+            {{ formatPrice(singleTotals.totalAmount) }} (değiştirilebilir)
+          </p>
         </div>
       </div>
 
@@ -178,31 +214,49 @@
           <template v-if="getProductById(item.product)">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                Birim Fiyat
+                Birim Fiyat (₺)
               </label>
               <input
                 :value="item.unit_price"
                 type="number"
                 step="0.01"
+                min="0"
                 @input="
-                  (e: Event) => {
-                    const target = e.target as HTMLInputElement;
-                    if (target) {
-                      handleUpdateBatchItem(index, 'unit_price', parseFloat(target.value) || 0);
-                    }
+                (e: Event) => {
+                  const target = e.target as HTMLInputElement;
+                  if (target) {
+                    handleUpdateBatchItem(index, 'unit_price', parseFloat(target.value) || 0);
                   }
-                "
+                }
+              "
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
               />
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                Toplam
+                Toplam Tutar (₺)
               </label>
-              <div class="px-3 py-2 bg-white border border-gray-300 rounded-md">
-                {{ formatPrice(item.quantity * item.unit_price) }}
-              </div>
+              <input
+                :value="item.quantity * item.unit_price"
+                type="number"
+                step="0.01"
+                min="0"
+                @input="
+                (e: Event) => {
+                  const target = e.target as HTMLInputElement;
+                  if (target && item.quantity > 0) {
+                    const totalAmount = parseFloat(target.value) || 0;
+                    const newUnitPrice = totalAmount / item.quantity;
+                    handleUpdateBatchItem(index, 'unit_price', newUnitPrice);
+                  }
+                }
+              "
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+              />
+              <p class="mt-1 text-xs text-gray-500">
+                Hesaplanan: {{ formatPrice(item.quantity * item.unit_price) }}
+              </p>
             </div>
           </template>
 
@@ -210,7 +264,7 @@
             <Button
               type="button"
               variant="outline"
-              @click="batchItems = batchItems.filter((_, i) => i !== index)"
+              @click="() => { batchItems = batchItems.filter((item: SaleItem, i: number) => i !== index); }"
             >
               Kaldır
             </Button>
@@ -284,7 +338,13 @@ const notes = ref("");
 
 const singleProduct = ref("");
 const singleQuantity = ref(1);
+const singleUnitPrice = ref<number | null>(null);
+const singleTotalAmount = ref<number | null>(null);
 const batchItems = ref<SaleItem[]>([]);
+
+const emit = defineEmits<{
+  saleCreated: [];
+}>();
 
 const getProductById = (id: string) => {
   return props.products.find((p) => p.id === id);
@@ -364,12 +424,32 @@ const handleProductSelect = async (productId: string, index?: number) => {
       handleUpdateBatchItem(index, "unit_cost", unitCost);
     } else {
       singleProduct.value = productId;
+      singleUnitPrice.value = unitPrice;
+      // Toplam tutarı hesapla
+      const qty = singleQuantity.value || 1;
+      singleTotalAmount.value = qty * unitPrice;
     }
   } catch (error: any) {
     console.error("Ürün bilgisi alınırken hata:", error);
     alert(
       "Ürün bilgisi alınırken bir hata oluştu. Lütfen sayfayı yenileyip tekrar deneyin."
     );
+  }
+};
+
+const updateSingleTotals = () => {
+  if (singleUnitPrice.value !== null && singleQuantity.value) {
+    singleTotalAmount.value = singleQuantity.value * singleUnitPrice.value;
+  }
+};
+
+const updateSingleTotalsFromTotal = () => {
+  if (
+    singleTotalAmount.value !== null &&
+    singleQuantity.value &&
+    singleQuantity.value > 0
+  ) {
+    singleUnitPrice.value = singleTotalAmount.value / singleQuantity.value;
   }
 };
 
@@ -402,11 +482,17 @@ const handleSubmit = async () => {
         return;
       }
 
+      // Kullanıcının girdiği birim fiyatı kullan, yoksa ürün fiyatını kullan
+      const unitPrice =
+        singleUnitPrice.value !== null && singleUnitPrice.value > 0
+          ? singleUnitPrice.value
+          : product.discount_price ?? product.price ?? 0;
+
       items = [
         {
           product: singleProduct.value,
           quantity: qty,
-          unit_price: product.discount_price ?? product.price ?? 0,
+          unit_price: unitPrice,
           unit_cost: product.cost_price ?? 0,
         },
       ];
@@ -454,14 +540,18 @@ const handleSubmit = async () => {
     // Reset form
     singleProduct.value = "";
     singleQuantity.value = 1;
+    singleUnitPrice.value = null;
+    singleTotalAmount.value = null;
     batchItems.value = [];
     notes.value = "";
 
     // Show success message
     alert("Satış başarıyla oluşturuldu!");
 
-    // Navigate to sales page - the page will refresh data on mount
-    await navigateTo("/admin/sales");
+    // Emit event to parent to refresh sales list
+    emit("saleCreated");
+
+    // Don't navigate away - stay on the same page
   } catch (error) {
     console.error("Error creating sale:", error);
     alert("Satış oluşturulurken bir hata oluştu");
@@ -475,12 +565,21 @@ const singleTotals = computed(() => {
     const product = getProductById(singleProduct.value);
     if (!product) return { totalAmount: 0, totalCost: 0, totalProfit: 0 };
     const qty = singleQuantity.value || 0;
-    const price = product.discount_price ?? product.price ?? 0;
+    // Kullanıcının girdiği birim fiyatı kullan, yoksa ürün fiyatını kullan
+    const price =
+      singleUnitPrice.value !== null && singleUnitPrice.value > 0
+        ? singleUnitPrice.value
+        : product.discount_price ?? product.price ?? 0;
     const costPrice = product.cost_price ?? 0;
+    // Eğer kullanıcı toplam tutar girmişse onu kullan
+    const totalAmount =
+      singleTotalAmount.value !== null && singleTotalAmount.value > 0
+        ? singleTotalAmount.value
+        : qty * price;
     return {
-      totalAmount: qty * price,
+      totalAmount,
       totalCost: qty * costPrice,
-      totalProfit: qty * price - qty * costPrice,
+      totalProfit: totalAmount - qty * costPrice,
     };
   }
   return { totalAmount: 0, totalCost: 0, totalProfit: 0 };

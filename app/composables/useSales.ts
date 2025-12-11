@@ -132,77 +132,16 @@ export const useSales = () => {
       "date_updated",
     ];
 
-    // Try updating sale totals - try as numbers first (Directus decimal fields prefer numbers)
-    try {
-      const updateResult = await client.request(
-        updateItem(
-          "sales" as any,
-          saleId,
-          {
-            total_amount: totalAmount,
-            total_cost: totalCost,
-            total_profit: totalProfit,
-          } as any,
-          {
-            fields: explicitFields,
-          } as any
-        )
-      );
-
-      if (process.env.NODE_ENV === "development") {
-        console.log("✅ Sale totals updated:", {
-          saleId,
-          totalAmount,
-          totalCost,
-          totalProfit,
-          updateResult,
-        });
-      }
-    } catch (error: any) {
-      // If that fails, try as strings
-      if (process.env.NODE_ENV === "development") {
-        console.warn(
-          "⚠️ Failed to update as numbers, trying as strings...",
-          error
-        );
-      }
-      try {
-        const stringUpdateResult = await client.request(
-          updateItem(
-            "sales" as any,
-            saleId,
-            {
-              total_amount: totalAmount.toFixed(2),
-              total_cost: totalCost.toFixed(2),
-              total_profit: totalProfit.toFixed(2),
-            } as any,
-            {
-              fields: explicitFields,
-            } as any
-          )
-        );
-        if (process.env.NODE_ENV === "development") {
-          console.log("✅ Sale totals updated as strings:", {
-            saleId,
-            totalAmount,
-            totalCost,
-            totalProfit,
-            stringUpdateResult,
-          });
-        }
-      } catch (retryError: any) {
-        // Log error but don't throw - sale items are already created
-        // The server-side endpoint will handle updating totals
-        console.error("❌ Failed to update sale totals in createSaleItems:", {
-          saleId,
-          totalAmount,
-          totalCost,
-          totalProfit,
-          error: retryError?.message || retryError,
-        });
-        // Note: The server-side endpoint (sales.post.ts) will handle updating totals
-        // So we don't throw here to avoid breaking the sale creation
-      }
+    // Note: We don't update sale totals here anymore
+    // The server-side endpoint (sales.post.ts) handles updating totals
+    // This avoids alias field issues with Directus SDK
+    if (process.env.NODE_ENV === "development") {
+      console.log("ℹ️ Sale totals will be updated by server endpoint:", {
+        saleId,
+        totalAmount,
+        totalCost,
+        totalProfit,
+      });
     }
 
     return createdItems;
