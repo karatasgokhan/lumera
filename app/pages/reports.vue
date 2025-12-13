@@ -318,9 +318,15 @@ const {
   getSales,
 } = useSales();
 
+// Helper function to safely get date string
+const getDateString = (date: Date): string => {
+  return (
+    date.toISOString().split("T")[0] || date.toISOString().substring(0, 10)
+  );
+};
+
 const now = new Date();
-const today =
-  now.toISOString().split("T")[0] || now.toISOString().substring(0, 10);
+const today = getDateString(now);
 const currentYear = now.getFullYear();
 const currentMonth = now.getMonth() + 1;
 const currentMonthYear = `${currentYear}-${String(currentMonth).padStart(
@@ -376,7 +382,7 @@ const presets = computed(() => {
       action: () => {
         const weekStart = new Date(todayDate);
         weekStart.setDate(todayDate.getDate() - todayDate.getDay());
-        selectedDate.value = weekStart.toISOString().split("T")[0];
+        selectedDate.value = getDateString(weekStart);
         reportType.value = "weekly";
       },
     },
@@ -401,8 +407,8 @@ const presets = computed(() => {
         const startDate = new Date();
         startDate.setDate(endDate.getDate() - 6);
         dateRange.value = {
-          start: startDate.toISOString().split("T")[0],
-          end: endDate.toISOString().split("T")[0],
+          start: getDateString(startDate),
+          end: getDateString(endDate),
         };
         reportType.value = "custom";
       },
@@ -414,8 +420,8 @@ const presets = computed(() => {
         const startDate = new Date();
         startDate.setDate(endDate.getDate() - 29);
         dateRange.value = {
-          start: startDate.toISOString().split("T")[0],
-          end: endDate.toISOString().split("T")[0],
+          start: getDateString(startDate),
+          end: getDateString(endDate),
         };
         reportType.value = "custom";
       },
@@ -468,6 +474,7 @@ const reportTitle = computed(() => {
       return `Haftalık Rapor - ${getWeekRangeText(selectedDate.value)}`;
     case "monthly":
       const [year, month] = selectedMonthYear.value.split("-");
+      if (!year || !month) return "Aylık Rapor";
       return `Aylık Rapor - ${new Date(
         parseInt(year),
         parseInt(month) - 1
@@ -492,6 +499,9 @@ const reportSubtitle = computed(() => {
     case "yearly":
       return "Seçilen yıl için detaylı satış analizi";
     case "custom":
+      if (!dateRange.value.start || !dateRange.value.end) {
+        return "Özel aralık için başlangıç ve bitiş tarihlerini seçin";
+      }
       return `${new Date(dateRange.value.start).toLocaleDateString(
         "tr-TR"
       )} - ${new Date(dateRange.value.end).toLocaleDateString(
@@ -555,6 +565,7 @@ const loadReports = async () => {
 
       case "monthly":
         const [year, month] = selectedMonthYear.value.split("-");
+        if (!year || !month) break;
         reportData = await getMonthlyReport(parseInt(year), parseInt(month));
         break;
 
@@ -563,6 +574,7 @@ const loadReports = async () => {
         break;
 
       case "custom":
+        if (!dateRange.value.start || !dateRange.value.end) break;
         reportData = await getCustomRangeReport(
           dateRange.value.start,
           dateRange.value.end

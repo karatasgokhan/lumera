@@ -1,7 +1,6 @@
 import {
   createDirectus,
   rest,
-  staticToken,
   readItems,
   readItem,
   createItem,
@@ -15,9 +14,8 @@ import type {
   SaleItem,
   StockMovement,
   Schema,
-} from "@/types";
+} from "~/types";
 
-// Validate Directus URL
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL;
 
 if (!DIRECTUS_URL) {
@@ -26,13 +24,10 @@ if (!DIRECTUS_URL) {
   );
 }
 
-// Create Directus client with optional static token authentication
-// Static token is required for server-side operations (create, update, delete)
 let directusClient = createDirectus<Schema>(DIRECTUS_URL || "").with(rest());
 
 export const directus = directusClient;
 
-// Helper function to handle Directus errors
 async function handleDirectusRequest<T>(
   request: () => Promise<T>,
   fallback: T,
@@ -48,9 +43,7 @@ async function handleDirectusRequest<T>(
   try {
     return await request();
   } catch (error: any) {
-    // Only log errors in development or if not silent
     if (!silent && process.env.NODE_ENV === "development") {
-      // Extract meaningful error info without spamming
       const errorMessage = error?.message || "Unknown error";
       const errorStatus = error?.response?.status;
 

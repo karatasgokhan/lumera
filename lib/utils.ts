@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { DirectusFile } from "@/types";
+import type { DirectusFile } from "~/types";
 
 // Shadcn UI için cn fonksiyonu
 export function cn(...inputs: ClassValue[]) {
