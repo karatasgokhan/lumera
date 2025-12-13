@@ -1,16 +1,27 @@
 <template>
   <div class="bg-white rounded-lg shadow-sm p-6">
     <div class="flex justify-between items-center mb-4">
-      <h2 class="font-medium text-black">Yeni Ürün Ekle</h2>
-      <Button
-        :variant="isOpen ? 'outline' : 'default'"
-        @click="isOpen = !isOpen"
-      >
-        {{ isOpen ? "İptal" : "+ Ürün Ekle" }}
-      </Button>
+      <h2 class="font-medium text-black">
+        {{ editingProduct ? "Ürün Düzenle" : "Yeni Ürün Ekle" }}
+      </h2>
+      <div v-if="!editingProduct" class="flex gap-2">
+        <Button
+          :variant="isOpen ? 'outline' : 'default'"
+          @click="isOpen = !isOpen"
+        >
+          {{ isOpen ? "İptal" : "+ Ürün Ekle" }}
+        </Button>
+      </div>
+      <div v-else class="flex gap-2">
+        <Button variant="outline" @click="cancelEdit"> İptal </Button>
+      </div>
     </div>
 
-    <form v-if="isOpen" @submit.prevent="handleSubmit" class="space-y-4">
+    <form
+      v-if="isOpen || editingProduct"
+      @submit.prevent="handleSubmit"
+      class="space-y-4"
+    >
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -31,18 +42,6 @@
           </label>
           <input
             v-model="formData.slug"
-            type="text"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            SKU *
-          </label>
-          <input
-            v-model="formData.sku"
             type="text"
             required
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
@@ -221,7 +220,13 @@
           İptal
         </Button>
         <Button type="submit" :disabled="isSubmitting">
-          {{ isSubmitting ? "Kaydediliyor..." : "Ürün Ekle" }}
+          {{
+            isSubmitting
+              ? "Kaydediliyor..."
+              : editingProduct
+              ? "Güncelle"
+              : "Ürün Ekle"
+          }}
         </Button>
       </div>
     </form>
@@ -229,18 +234,26 @@
 </template>
 
 <script setup lang="ts">
-import type { Category } from "~/types";
+import type { Category, Product } from "~/types";
 import { useProducts } from "~/composables/useProducts";
 import { getImageUrl } from "~/utils";
 import Button from "~/components/ui/Button.vue";
 
 interface Props {
   categories: Category[];
+  product?: Product | string | null;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  product: null,
+});
 
-const { createProduct } = useProducts();
+const emit = defineEmits<{
+  (e: "saved"): void;
+  (e: "cancelled"): void;
+}>();
+
+const { createProduct, updateProduct, getProduct } = useProducts();
 const config = useRuntimeConfig();
 
 const isOpen = ref(false);
@@ -251,10 +264,11 @@ const selectedFiles = ref<Array<{ file: File; preview: string; name: string }>>(
 );
 const uploadedImages = ref<string[]>([]);
 
+const editingProduct = computed(() => props.product !== null);
+
 const formData = ref({
   name: "",
   slug: "",
-  sku: "",
   description: "",
   cost_price: 0,
   price: 0,
@@ -264,6 +278,71 @@ const formData = ref({
   material: "",
   category: "",
 });
+
+// Define resetForm before watch to avoid "before initialization" error
+const resetForm = () => {
+  formData.value = {
+    name: "",
+    slug: "",
+    description: "",
+    cost_price: 0,
+    price: 0,
+    discount_price: null,
+    stock_quantity: 0,
+    is_active: true,
+    material: "",
+    category: "",
+  };
+  selectedFiles.value = [];
+  uploadedImages.value = [];
+};
+
+// Watch for product prop changes to populate form
+watch(
+  () => props.product,
+  async (newProduct) => {
+    if (newProduct) {
+      // Fetch full product data if only ID is provided
+      let productData: Product | null = null;
+
+      if (typeof newProduct === "string") {
+        productData = await getProduct(newProduct);
+      } else if (newProduct && typeof newProduct === "object") {
+        productData = newProduct as Product;
+      }
+
+      if (productData) {
+        formData.value = {
+          name: productData.name || "",
+          slug: productData.slug || "",
+          description: productData.description || "",
+          cost_price: Number(productData.cost_price) || 0,
+          price: Number(productData.price) || 0,
+          discount_price: productData.discount_price
+            ? Number(productData.discount_price)
+            : null,
+          stock_quantity: Number(productData.stock_quantity) || 0,
+          is_active: productData.is_active ?? true,
+          material: productData.material || "",
+          category:
+            typeof productData.category === "object" && productData.category
+              ? productData.category.id
+              : productData.category || "",
+        };
+
+        // Set existing images
+        if (productData.images && Array.isArray(productData.images)) {
+          uploadedImages.value = productData.images.map((img: any) =>
+            typeof img === "string" ? img : img.id
+          );
+        }
+      }
+    } else {
+      resetForm();
+    }
+  },
+  { immediate: true }
+);
 
 const generateSlug = (name: string) => {
   return name
@@ -330,17 +409,29 @@ const uploadFiles = async (files: File[]): Promise<string[]> => {
   }
 };
 
+const cancelEdit = () => {
+  resetForm();
+  emit("cancelled");
+};
+
 const handleSubmit = async () => {
   isSubmitting.value = true;
 
   try {
     // Upload images first
-    let imageIds: string[] = [...uploadedImages.value];
+    // For editing: Only send new images, server will replace all existing ones
+    // For creating: Send all images
+    let imageIds: string[] = editingProduct.value
+      ? []
+      : [...uploadedImages.value];
 
     if (selectedFiles.value.length > 0) {
       const filesToUpload = selectedFiles.value.map((f) => f.file);
       const newImageIds = await uploadFiles(filesToUpload);
       imageIds = [...imageIds, ...newImageIds];
+    } else if (editingProduct.value && uploadedImages.value.length > 0) {
+      // If editing and no new files selected, keep existing images
+      imageIds = [...uploadedImages.value];
     }
 
     const productData: any = {
@@ -352,29 +443,29 @@ const handleSubmit = async () => {
       productData.images = imageIds;
     }
 
-    await createProduct(productData);
+    if (editingProduct.value && props.product) {
+      const productId =
+        typeof props.product === "string" ? props.product : props.product.id;
+      await updateProduct(productId, productData);
+    } else {
+      await createProduct(productData);
+    }
 
     // Reset form
-    formData.value = {
-      name: "",
-      slug: "",
-      sku: "",
-      description: "",
-      cost_price: 0,
-      price: 0,
-      discount_price: null,
-      stock_quantity: 0,
-      is_active: true,
-      material: "",
-      category: "",
-    };
-    selectedFiles.value = [];
-    uploadedImages.value = [];
+    resetForm();
     isOpen.value = false;
-    await navigateTo("/admin/products", { replace: true });
+    emit("saved");
+
+    if (!editingProduct.value) {
+      await navigateTo("/admin/products", { replace: true });
+    }
   } catch (error) {
-    console.error("Error creating product:", error);
-    alert("Ürün oluşturulurken bir hata oluştu");
+    console.error("Error saving product:", error);
+    alert(
+      editingProduct.value
+        ? "Ürün güncellenirken bir hata oluştu"
+        : "Ürün oluşturulurken bir hata oluştu"
+    );
   } finally {
     isSubmitting.value = false;
   }

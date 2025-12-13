@@ -18,6 +18,7 @@ export const useProducts = () => {
             "category.id",
             "category.name",
             "category.slug",
+            "images",
           ]),
           sort: JSON.stringify(["-date_created"]),
         };
@@ -69,7 +70,13 @@ export const useProducts = () => {
     return handleDirectusRequest(
       async () => {
         const query: any = {
-          fields: ["*", "category.id", "category.name", "category.slug"],
+          fields: [
+            "*",
+            "category.id",
+            "category.name",
+            "category.slug",
+            "images",
+          ],
           sort: ["-date_created"],
         };
 
@@ -160,7 +167,12 @@ export const useProducts = () => {
       try {
         const product = await client.request(
           readItem("products", id, {
-            fields: ["*", "category.id", "category.name", "category.slug"],
+            fields: [
+              "*",
+              "category.id",
+              "category.name",
+              "category.slug",
+            ] as any,
           })
         );
         return product as unknown as Product;
@@ -192,6 +204,21 @@ export const useProducts = () => {
     id: string,
     data: Partial<Product>
   ): Promise<Product> => {
+    // On client, use server API route to avoid CORS
+    if (process.client) {
+      try {
+        const response = await $fetch<Product>(`/api/products/${id}`, {
+          method: "PUT",
+          body: data,
+        });
+        return response;
+      } catch (error: any) {
+        console.error("Failed to update product via API:", error);
+        throw error;
+      }
+    }
+
+    // On server, use direct Directus call
     return (await client.request(
       updateItem("products", id, data as any)
     )) as unknown as Product;

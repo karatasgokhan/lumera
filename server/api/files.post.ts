@@ -45,10 +45,24 @@ export default defineEventHandler(async (event) => {
       // Create FormData for Directus
       // Node.js 18+ FormData supports Buffer with options
       const directusFormData = new FormData();
-      directusFormData.append("file", part.data, {
-        filename: part.filename,
-        contentType: part.type || "application/octet-stream",
-      });
+
+      // Node.js 18+ FormData supports Buffer directly
+      // Use File class if available (Node.js 20+), otherwise use Buffer with filename
+      try {
+        if (typeof File !== "undefined") {
+          // Node.js 20+ has global File class
+          const file = new File([part.data as any], part.filename, {
+            type: part.type || "application/octet-stream",
+          });
+          directusFormData.append("file", file);
+        } else {
+          // Node.js 18: Use Buffer directly with filename as third parameter
+          // TypeScript types don't reflect that Node.js FormData accepts Buffer
+          directusFormData.append("file", part.data as any, part.filename);
+        }
+      } catch (appendError: any) {
+        throw appendError;
+      }
 
       // Upload to Directus using REST API
       const response = await $fetch<{ data: { id: string } }>(

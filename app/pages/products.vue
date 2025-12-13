@@ -11,7 +11,153 @@
 
       <!-- Add Product Form -->
       <div class="mb-8">
-        <AdminProductForm :categories="categories" />
+        <AdminProductForm
+          v-if="!editingProductId"
+          :categories="categories"
+          @saved="handleProductSaved"
+        />
+      </div>
+
+      <!-- Edit Product Form Modal -->
+      <div
+        v-if="editingProductId"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="closeEditModal"
+      >
+        <div
+          class="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        >
+          <div
+            class="p-6 border-b border-gray-200 flex justify-between items-center"
+          >
+            <h2 class="font-medium text-black text-lg">Ürün Düzenle</h2>
+            <button
+              @click="closeEditModal"
+              class="text-gray-400 hover:text-gray-600 text-2xl"
+            >
+              ×
+            </button>
+          </div>
+          <div class="p-6 overflow-y-auto flex-1">
+            <AdminProductForm
+              :categories="categories"
+              :product="editingProductId"
+              @saved="handleProductSaved"
+              @cancelled="closeEditModal"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Search and Filters -->
+      <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <!-- Search -->
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Arama
+            </label>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Ürün adı veya açıklama ile ara..."
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+              @input="handleSearch"
+            />
+          </div>
+
+          <!-- Category Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Kategori
+            </label>
+            <select
+              v-model="selectedCategory"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+              @change="applyFilters"
+            >
+              <option value="">Tüm Kategoriler</option>
+              <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                {{ cat.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Status Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Durum
+            </label>
+            <select
+              v-model="selectedStatus"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+              @change="applyFilters"
+            >
+              <option value="">Tümü</option>
+              <option value="true">Aktif</option>
+              <option value="false">Pasif</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Stock Filter -->
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Stok Durumu
+          </label>
+          <div class="flex gap-4">
+            <label class="flex items-center">
+              <input
+                v-model="stockFilter"
+                type="radio"
+                value=""
+                class="mr-2"
+                @change="applyFilters"
+              />
+              <span class="text-sm text-gray-700">Tümü</span>
+            </label>
+            <label class="flex items-center">
+              <input
+                v-model="stockFilter"
+                type="radio"
+                value="in_stock"
+                class="mr-2"
+                @change="applyFilters"
+              />
+              <span class="text-sm text-gray-700">Stokta Var</span>
+            </label>
+            <label class="flex items-center">
+              <input
+                v-model="stockFilter"
+                type="radio"
+                value="low_stock"
+                class="mr-2"
+                @change="applyFilters"
+              />
+              <span class="text-sm text-gray-700">Stok Az</span>
+            </label>
+            <label class="flex items-center">
+              <input
+                v-model="stockFilter"
+                type="radio"
+                value="out_of_stock"
+                class="mr-2"
+                @change="applyFilters"
+              />
+              <span class="text-sm text-gray-700">Stokta Yok</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Clear Filters Button -->
+        <div v-if="hasActiveFilters" class="mt-4">
+          <button
+            @click="clearFilters"
+            class="text-sm text-gray-600 hover:text-gray-800 underline"
+          >
+            Filtreleri Temizle
+          </button>
+        </div>
       </div>
 
       <!-- Products Table -->
@@ -41,11 +187,6 @@
                 <th
                   class="text-left py-3 px-6 text-sm font-medium text-gray-600"
                 >
-                  SKU
-                </th>
-                <th
-                  class="text-left py-3 px-6 text-sm font-medium text-gray-600"
-                >
                   Kategori
                 </th>
                 <th
@@ -67,6 +208,11 @@
                   class="text-center py-3 px-6 text-sm font-medium text-gray-600"
                 >
                   Durum
+                </th>
+                <th
+                  class="text-center py-3 px-6 text-sm font-medium text-gray-600"
+                >
+                  İşlemler
                 </th>
               </tr>
             </thead>
@@ -99,9 +245,6 @@
                   </div>
                 </td>
                 <td class="py-4 px-6 text-sm text-gray-700">
-                  {{ product.sku }}
-                </td>
-                <td class="py-4 px-6 text-sm text-gray-700">
                   {{
                     typeof product.category === "object" && product.category
                       ? product.category.name
@@ -131,22 +274,46 @@
                   </button>
                 </td>
                 <td class="py-4 px-6 text-center">
-                  <span
-                    :class="`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      product.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`"
-                  >
-                    {{ product.is_active ? "Aktif" : "Pasif" }}
-                  </span>
+                  <div class="flex items-center justify-center gap-2">
+                    <Switch
+                      :model-value="product.is_active"
+                      :disabled="isTogglingStatus === product.id"
+                      @update:model-value="toggleProductStatus(product)"
+                    />
+                    <span
+                      :class="`text-xs font-medium ${
+                        product.is_active ? 'text-green-700' : 'text-gray-600'
+                      }`"
+                    >
+                      {{ product.is_active ? "Aktif" : "Pasif" }}
+                    </span>
+                  </div>
+                </td>
+                <td class="py-4 px-6 text-center">
+                  <div class="flex items-center justify-center gap-2">
+                    <button
+                      @click="openEditModal(product)"
+                      class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                    >
+                      Düzenle
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
+        <div v-else-if="!isLoading" class="p-12 text-center">
+          <p class="text-gray-500">
+            {{
+              hasActiveFilters
+                ? "Arama kriterlerinize uygun ürün bulunamadı"
+                : "Henüz ürün eklenmemiş"
+            }}
+          </p>
+        </div>
         <div v-else class="p-12 text-center">
-          <p class="text-gray-500">Henüz ürün eklenmemiş</p>
+          <p class="text-gray-500">Yükleniyor...</p>
         </div>
 
         <!-- Pagination -->
@@ -274,6 +441,7 @@
 import type { Product, Category, DirectusFile, StockMovement } from "~/types";
 import { formatPrice, getImageUrl } from "~/utils";
 import { useStockMovements } from "~/composables/useStockMovements";
+import Switch from "~/components/ui/Switch.vue";
 
 definePageMeta({
   layout: "admin",
@@ -290,6 +458,13 @@ const totalProducts = ref(0);
 const products = ref<Product[]>([]);
 const isLoading = ref(false);
 
+// Search and filter state
+const searchQuery = ref("");
+const selectedCategory = ref("");
+const selectedStatus = ref("");
+const stockFilter = ref("");
+const searchTimeout = ref<NodeJS.Timeout | null>(null);
+
 // Use useAsyncData for SSR, but also fetch directly on client
 const { data: categories } = await useAsyncData<Category[]>(
   "products-page-categories",
@@ -301,7 +476,113 @@ const { data: categories } = await useAsyncData<Category[]>(
   }
 );
 
-// Fetch products with pagination
+// Build filters from search and filter state
+const buildFilters = () => {
+  const filters: any = {};
+  const conditions: any[] = [];
+
+  // Search filter - search in name and description
+  if (searchQuery.value.trim()) {
+    conditions.push({
+      _or: [
+        {
+          name: {
+            _icontains: searchQuery.value.trim(),
+          },
+        },
+        {
+          description: {
+            _icontains: searchQuery.value.trim(),
+          },
+        },
+      ],
+    });
+  }
+
+  // Category filter
+  if (selectedCategory.value) {
+    conditions.push({
+      category: {
+        _eq: selectedCategory.value,
+      },
+    });
+  }
+
+  // Status filter
+  if (selectedStatus.value !== "") {
+    conditions.push({
+      is_active: {
+        _eq: selectedStatus.value === "true",
+      },
+    });
+  }
+
+  // Stock filter
+  if (stockFilter.value) {
+    if (stockFilter.value === "in_stock") {
+      conditions.push({
+        stock_quantity: {
+          _gt: 10,
+        },
+      });
+    } else if (stockFilter.value === "low_stock") {
+      // Use _and for range condition (0 < stock <= 10)
+      conditions.push({
+        _and: [
+          {
+            stock_quantity: {
+              _gt: 0,
+            },
+          },
+          {
+            stock_quantity: {
+              _lte: 10,
+            },
+          },
+        ],
+      });
+    } else if (stockFilter.value === "out_of_stock") {
+      conditions.push({
+        stock_quantity: {
+          _eq: 0,
+        },
+      });
+    }
+  }
+
+  // Combine all conditions with _and if there are multiple
+  if (conditions.length === 0) {
+    return undefined;
+  } else if (conditions.length === 1) {
+    return conditions[0];
+  } else {
+    // Flatten nested _and conditions if needed
+    const flattenedConditions: any[] = [];
+    conditions.forEach((condition) => {
+      if (condition._and && Array.isArray(condition._and)) {
+        // If condition is already an _and, merge its conditions
+        flattenedConditions.push(...condition._and);
+      } else {
+        flattenedConditions.push(condition);
+      }
+    });
+    return {
+      _and: flattenedConditions,
+    };
+  }
+};
+
+// Check if any filters are active
+const hasActiveFilters = computed(() => {
+  return (
+    searchQuery.value.trim() !== "" ||
+    selectedCategory.value !== "" ||
+    selectedStatus.value !== "" ||
+    stockFilter.value !== ""
+  );
+});
+
+// Fetch products with pagination and filters
 const fetchProducts = async (page: number = 1) => {
   isLoading.value = true;
   if (process.env.NODE_ENV === "development") {
@@ -309,7 +590,8 @@ const fetchProducts = async (page: number = 1) => {
   }
   try {
     const offset = (page - 1) * itemsPerPage;
-    const result = await getProducts(undefined, {
+    const filters = buildFilters();
+    const result = await getProducts(filters, {
       limit: itemsPerPage,
       offset: offset,
     });
@@ -319,6 +601,7 @@ const fetchProducts = async (page: number = 1) => {
         count: result.data.length,
         total: result.total,
         page,
+        filters,
       });
     }
 
@@ -332,6 +615,33 @@ const fetchProducts = async (page: number = 1) => {
   } finally {
     isLoading.value = false;
   }
+};
+
+// Handle search with debounce
+const handleSearch = () => {
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+  }
+  searchTimeout.value = setTimeout(() => {
+    currentPage.value = 1;
+    fetchProducts(1);
+  }, 500);
+};
+
+// Apply filters
+const applyFilters = () => {
+  currentPage.value = 1;
+  fetchProducts(1);
+};
+
+// Clear all filters
+const clearFilters = () => {
+  searchQuery.value = "";
+  selectedCategory.value = "";
+  selectedStatus.value = "";
+  stockFilter.value = "";
+  currentPage.value = 1;
+  fetchProducts(1);
 };
 
 // Pagination helpers
@@ -393,6 +703,10 @@ onMounted(async () => {
 
 const selectedProductId = ref<string | null>(null);
 const stockMovements = ref<StockMovement[]>([]);
+const editingProductId = ref<string | null>(null);
+const isTogglingStatus = ref<string | null>(null);
+
+const { updateProduct } = useProducts();
 
 const getProductImage = (product: Product): string | null => {
   if (!product.images || product.images.length === 0) return null;
@@ -429,6 +743,48 @@ const getMovementTypeLabel = (type: string): string => {
     adjustment: "Stok Düzeltmesi",
   };
   return labels[type] || type;
+};
+
+const openEditModal = (product: Product) => {
+  editingProductId.value = product.id;
+};
+
+const closeEditModal = () => {
+  editingProductId.value = null;
+};
+
+const handleProductSaved = async () => {
+  editingProductId.value = null;
+  // Refresh products list
+  await fetchProducts(currentPage.value);
+};
+
+const toggleProductStatus = async (product: Product) => {
+  if (isTogglingStatus.value === product.id) return;
+
+  const newStatus = !product.is_active;
+
+  isTogglingStatus.value = product.id;
+  try {
+    await updateProduct(product.id, {
+      is_active: newStatus,
+    });
+    // Update local state immediately for better UX
+    const productIndex = products.value.findIndex((p) => p.id === product.id);
+    if (productIndex !== -1 && products.value[productIndex]) {
+      products.value[productIndex].is_active = newStatus;
+    }
+  } catch (error) {
+    console.error("Error toggling product status:", error);
+    alert("Ürün durumu güncellenirken bir hata oluştu");
+    // Revert switch on error - find product and revert status
+    const productIndex = products.value.findIndex((p) => p.id === product.id);
+    if (productIndex !== -1 && products.value[productIndex]) {
+      products.value[productIndex].is_active = product.is_active;
+    }
+  } finally {
+    isTogglingStatus.value = null;
+  }
 };
 
 useSeoMeta({

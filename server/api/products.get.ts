@@ -1,9 +1,16 @@
-import { createDirectus, rest, readItems, aggregate } from "@directus/sdk";
+import {
+  createDirectus,
+  rest,
+  staticToken,
+  readItems,
+  aggregate,
+} from "@directus/sdk";
 import type { Schema } from "~/types";
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
   const directusUrl = config.public.directusUrl;
+  const staticTokenValue = config.directusStaticToken;
 
   if (!directusUrl) {
     throw createError({
@@ -13,10 +20,22 @@ export default defineEventHandler(async (event) => {
   }
 
   const query = getQuery(event);
-  const client = createDirectus<Schema>(directusUrl).with(rest());
 
-  // Default fields with category relation expanded
-  const defaultFields = ["*", "category.id", "category.name", "category.slug"];
+  // Create authenticated client for server-side operations
+  let client = createDirectus<Schema>(directusUrl).with(rest());
+  if (staticTokenValue) {
+    client = client.with(staticToken(staticTokenValue));
+  }
+
+  // Default fields with category relation expanded and images M2M relation
+  // For M2M images, Directus returns file IDs directly as an array
+  const defaultFields = [
+    "*",
+    "category.id",
+    "category.name",
+    "category.slug",
+    "images",
+  ];
 
   const queryParams: any = {
     fields: query.fields ? JSON.parse(query.fields as string) : defaultFields,
@@ -40,12 +59,15 @@ export default defineEventHandler(async (event) => {
     const [dataResponse, countResponse] = await Promise.all([
       client.request(readItems("products", queryParams)),
       client.request(
-        aggregate("products", {
-          aggregate: { count: "*" },
-          query: query.filter
-            ? { filter: JSON.parse(query.filter as string) }
-            : undefined,
-        } as any) as any
+        aggregate(
+          "products" as any,
+          {
+            aggregate: { count: "*" },
+            query: query.filter
+              ? { filter: JSON.parse(query.filter as string) }
+              : undefined,
+          } as any
+        ) as any
       ),
     ]);
 
@@ -55,9 +77,53 @@ export default defineEventHandler(async (event) => {
         ? (countResponse[0] as any)?.count?.["*"] || 0
         : 0;
 
+    // Expand images M2M field manually if SDK doesn't return it
+    // Directus SDK sometimes doesn't expand M2M alias fields in readItems
+    const normalizedUrl = directusUrl.replace(/\/$/, "");
+    const productsWithImages = Array.isArray(dataResponse)
+      ? await Promise.all(
+          dataResponse.map(async (product: any) => {
+            // Always expand images: SDK may return junction IDs or file IDs
+            // Directus M2M returns junction table IDs, we need to convert them to file IDs
+            try {
+              // Fetch junction items to get file IDs
+              const junctionItems = await client.request(
+                readItems("products_files" as any, {
+                  filter: {
+                    products_id: { _eq: product.id },
+                  },
+                  fields: ["id", "directus_files_id"],
+                  sort: ["sort"],
+                })
+              );
+
+              // Extract file IDs from junction items
+              if (Array.isArray(junctionItems) && junctionItems.length > 0) {
+                product.images = junctionItems.map(
+                  (item: any) => item.directus_files_id
+                );
+              } else {
+                // No junction items found, set empty array
+                product.images = [];
+              }
+            } catch (error: any) {
+              console.warn(
+                `Failed to fetch images for product ${product.id}:`,
+                error
+              );
+              // Set empty array on error
+              product.images = [];
+            }
+            return product;
+          })
+        )
+      : dataResponse;
+
     // Return response with meta (matching Directus format)
     return {
-      data: Array.isArray(dataResponse) ? dataResponse : dataResponse,
+      data: Array.isArray(productsWithImages)
+        ? productsWithImages
+        : productsWithImages,
       meta: {
         total_count: total,
       },

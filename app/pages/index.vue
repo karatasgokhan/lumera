@@ -10,7 +10,7 @@
       </div>
 
       <!-- Stats Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div class="bg-white p-6 rounded-lg shadow-sm">
           <h3 class="text-sm font-medium text-gray-500 mb-1">Toplam Ürün</h3>
           <p class="text-3xl font-light text-black">
@@ -33,6 +33,15 @@
           <h3 class="text-sm font-medium text-gray-500 mb-1">Bugünkü Gelir</h3>
           <p class="text-3xl font-light text-black">
             {{ formatPrice(stats.todayRevenue) }}
+          </p>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-sm">
+          <h3 class="text-sm font-medium text-gray-500 mb-1">
+            Bugünkü Maliyet
+          </h3>
+          <p class="text-3xl font-light text-black">
+            {{ formatPrice(stats.todayCost) }}
           </p>
         </div>
 
@@ -176,6 +185,7 @@ const { data: todayReport } = await useAsyncData(
     default: () => ({
       sales_count: 0,
       total_amount: 0,
+      total_cost: 0,
       total_profit: 0,
     }),
     server: true,
@@ -219,6 +229,12 @@ const stats = computed(() => {
       ? 0
       : Number(safeTotalAmount);
 
+  const safeTotalCost = todayReport.value?.total_cost;
+  const todayCost =
+    safeTotalCost == null || isNaN(Number(safeTotalCost))
+      ? 0
+      : Number(safeTotalCost);
+
   const safeTotalProfit = todayReport.value?.total_profit;
   const todayProfit =
     safeTotalProfit == null || isNaN(Number(safeTotalProfit))
@@ -230,6 +246,7 @@ const stats = computed(() => {
     activeProducts: productsData.filter((p) => p.is_active).length || 0,
     todaySales: todayReport.value?.sales_count || 0,
     todayRevenue,
+    todayCost,
     todayProfit,
     recentSales: recentSalesData,
   };

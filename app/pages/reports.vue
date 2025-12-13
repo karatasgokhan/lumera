@@ -195,9 +195,6 @@
                       <div class="font-medium text-black">
                         {{ item.product.name }}
                       </div>
-                      <div class="text-sm text-gray-500">
-                        {{ item.product.sku }}
-                      </div>
                     </div>
                   </div>
                 </td>
