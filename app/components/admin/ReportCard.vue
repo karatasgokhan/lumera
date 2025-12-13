@@ -51,7 +51,7 @@ interface Props {
     total_cost: number;
     total_profit: number;
   };
-  type: "daily" | "monthly";
+  type: "daily" | "weekly" | "monthly" | "yearly" | "custom";
 }
 
 defineProps<Props>();

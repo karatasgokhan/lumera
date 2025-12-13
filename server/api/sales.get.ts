@@ -44,6 +44,9 @@ export default defineEventHandler(async (event) => {
     "sale_items.quantity",
     "sale_items.unit_price",
     "sale_items.unit_cost",
+    "sale_items.subtotal",
+    "sale_items.cost_total",
+    "sale_items.profit",
     "sale_items.product.id",
     "sale_items.product.name",
   ];

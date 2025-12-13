@@ -397,15 +397,18 @@ export async function getMonthlyReport(
         const product = typeof item.product === "string" ? null : item.product;
 
         if (productId && product) {
+          // Use subtotal if available, otherwise calculate from quantity * unit_price
+          const revenue = item.subtotal ?? item.quantity * item.unit_price;
+
           const existing = productMap.get(productId);
           if (existing) {
             existing.quantity += item.quantity;
-            existing.revenue += item.subtotal;
+            existing.revenue += revenue;
           } else {
             productMap.set(productId, {
               product,
               quantity: item.quantity,
-              revenue: item.subtotal,
+              revenue: revenue,
             });
           }
         }

@@ -171,6 +171,9 @@ export const useSales = () => {
           "sale_items.quantity",
           "sale_items.unit_price",
           "sale_items.unit_cost",
+          "sale_items.subtotal",
+          "sale_items.cost_total",
+          "sale_items.profit",
           "sale_items.product.id",
           "sale_items.product.name",
         ];
@@ -250,6 +253,9 @@ export const useSales = () => {
           "sale_items.quantity",
           "sale_items.unit_price",
           "sale_items.unit_cost",
+          "sale_items.subtotal",
+          "sale_items.cost_total",
+          "sale_items.profit",
           "sale_items.product.id",
           "sale_items.product.name",
         ];
@@ -457,15 +463,18 @@ export const useSales = () => {
             typeof item.product === "string" ? null : item.product;
 
           if (productId && product) {
+            // Use subtotal if available, otherwise calculate from quantity * unit_price
+            const revenue = item.subtotal ?? item.quantity * item.unit_price;
+
             const existing = productMap.get(productId);
             if (existing) {
               existing.quantity += item.quantity;
-              existing.revenue += item.subtotal;
+              existing.revenue += revenue;
             } else {
               productMap.set(productId, {
                 product,
                 quantity: item.quantity,
-                revenue: item.subtotal,
+                revenue: revenue,
               });
             }
           }
@@ -489,12 +498,244 @@ export const useSales = () => {
     };
   };
 
+  const getWeeklyReport = async (
+    year: number,
+    week: number
+  ): Promise<{
+    year: number;
+    week: number;
+    total_amount: number;
+    total_cost: number;
+    total_profit: number;
+    sales_count: number;
+    items: Sale[];
+  }> => {
+    // Calculate start and end dates for the week
+    // Week 1 starts on January 1st
+    const jan1 = new Date(year, 0, 1);
+    const daysOffset = (week - 1) * 7;
+    const startDate = new Date(jan1);
+    startDate.setDate(jan1.getDate() + daysOffset);
+
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 6);
+    endDate.setHours(23, 59, 59, 999);
+
+    const startDateStr = startDate.toISOString().split("T")[0];
+    const endDateStr = endDate.toISOString().split("T")[0];
+
+    const result = await getSales({
+      sale_date: {
+        _gte: `${startDateStr}T00:00:00`,
+        _lte: `${endDateStr}T23:59:59`,
+      },
+    });
+
+    const sales = result.data || [];
+
+    // Safely convert to numbers, handling null, undefined, and string values
+    const totalAmount = sales.reduce((sum: number, sale: Sale) => {
+      const amount = Number(sale.total_amount) || 0;
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+
+    const totalCost = sales.reduce((sum: number, sale: Sale) => {
+      const cost = Number(sale.total_cost) || 0;
+      return sum + (isNaN(cost) ? 0 : cost);
+    }, 0);
+
+    const totalProfit = totalAmount - totalCost;
+
+    return {
+      year,
+      week,
+      total_amount: isNaN(totalAmount) ? 0 : totalAmount,
+      total_cost: isNaN(totalCost) ? 0 : totalCost,
+      total_profit: isNaN(totalProfit) ? 0 : totalProfit,
+      sales_count: sales.length,
+      items: sales,
+    };
+  };
+
+  const getYearlyReport = async (
+    year: number
+  ): Promise<{
+    year: number;
+    total_amount: number;
+    total_cost: number;
+    total_profit: number;
+    sales_count: number;
+    items: Sale[];
+    topProducts: Array<{ product: Product; quantity: number; revenue: number }>;
+  }> => {
+    const startDate = `${year}-01-01`;
+    const endDate = `${year}-12-31`;
+
+    const result = await getSales({
+      sale_date: {
+        _gte: `${startDate}T00:00:00`,
+        _lte: `${endDate}T23:59:59`,
+      },
+    });
+
+    const sales = result.data || [];
+
+    // Safely convert to numbers, handling null, undefined, and string values
+    const totalAmount = sales.reduce((sum: number, sale: Sale) => {
+      const amount = Number(sale.total_amount) || 0;
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+
+    const totalCost = sales.reduce((sum: number, sale: Sale) => {
+      const cost = Number(sale.total_cost) || 0;
+      return sum + (isNaN(cost) ? 0 : cost);
+    }, 0);
+
+    const totalProfit = totalAmount - totalCost;
+
+    // Calculate top products
+    const productMap = new Map<
+      string,
+      { product: Product; quantity: number; revenue: number }
+    >();
+
+    sales.forEach((sale: Sale) => {
+      if (sale.sale_items) {
+        sale.sale_items.forEach((item) => {
+          const productId =
+            typeof item.product === "string" ? item.product : item.product.id;
+          const product =
+            typeof item.product === "string" ? null : item.product;
+
+          if (productId && product) {
+            // Use subtotal if available, otherwise calculate from quantity * unit_price
+            const revenue = item.subtotal ?? item.quantity * item.unit_price;
+
+            const existing = productMap.get(productId);
+            if (existing) {
+              existing.quantity += item.quantity;
+              existing.revenue += revenue;
+            } else {
+              productMap.set(productId, {
+                product,
+                quantity: item.quantity,
+                revenue: revenue,
+              });
+            }
+          }
+        });
+      }
+    });
+
+    const topProducts = Array.from(productMap.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+
+    return {
+      year,
+      total_amount: isNaN(totalAmount) ? 0 : totalAmount,
+      total_cost: isNaN(totalCost) ? 0 : totalCost,
+      total_profit: isNaN(totalProfit) ? 0 : totalProfit,
+      sales_count: sales.length,
+      items: sales,
+      topProducts,
+    };
+  };
+
+  const getCustomRangeReport = async (
+    startDate: string,
+    endDate: string
+  ): Promise<{
+    startDate: string;
+    endDate: string;
+    total_amount: number;
+    total_cost: number;
+    total_profit: number;
+    sales_count: number;
+    items: Sale[];
+    topProducts: Array<{ product: Product; quantity: number; revenue: number }>;
+  }> => {
+    const result = await getSales({
+      sale_date: {
+        _gte: `${startDate}T00:00:00`,
+        _lte: `${endDate}T23:59:59`,
+      },
+    });
+
+    const sales = result.data || [];
+
+    // Safely convert to numbers, handling null, undefined, and string values
+    const totalAmount = sales.reduce((sum: number, sale: Sale) => {
+      const amount = Number(sale.total_amount) || 0;
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+
+    const totalCost = sales.reduce((sum: number, sale: Sale) => {
+      const cost = Number(sale.total_cost) || 0;
+      return sum + (isNaN(cost) ? 0 : cost);
+    }, 0);
+
+    const totalProfit = totalAmount - totalCost;
+
+    // Calculate top products
+    const productMap = new Map<
+      string,
+      { product: Product; quantity: number; revenue: number }
+    >();
+
+    sales.forEach((sale: Sale) => {
+      if (sale.sale_items) {
+        sale.sale_items.forEach((item) => {
+          const productId =
+            typeof item.product === "string" ? item.product : item.product.id;
+          const product =
+            typeof item.product === "string" ? null : item.product;
+
+          if (productId && product) {
+            // Use subtotal if available, otherwise calculate from quantity * unit_price
+            const revenue = item.subtotal ?? item.quantity * item.unit_price;
+
+            const existing = productMap.get(productId);
+            if (existing) {
+              existing.quantity += item.quantity;
+              existing.revenue += revenue;
+            } else {
+              productMap.set(productId, {
+                product,
+                quantity: item.quantity,
+                revenue: revenue,
+              });
+            }
+          }
+        });
+      }
+    });
+
+    const topProducts = Array.from(productMap.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+
+    return {
+      startDate,
+      endDate,
+      total_amount: isNaN(totalAmount) ? 0 : totalAmount,
+      total_cost: isNaN(totalCost) ? 0 : totalCost,
+      total_profit: isNaN(totalProfit) ? 0 : totalProfit,
+      sales_count: sales.length,
+      items: sales,
+      topProducts,
+    };
+  };
+
   return {
     createSale,
     createSaleItems,
     getSales,
     getSale,
     getDailyReport,
+    getWeeklyReport,
     getMonthlyReport,
+    getYearlyReport,
+    getCustomRangeReport,
   };
 };
